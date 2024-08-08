@@ -1,0 +1,11 @@
+[package]
+name = "sealedinfra"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.86"
+kube = "0.93.1"
+serde = { version = "1.0.205", features = ["derive"] }
+thiserror = "1.0.63"
+tokio = { version = "1.39.2", features = ["full"] }
