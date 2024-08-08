@@ -1,7 +1,7 @@
 output "cluster_ip" {
-  value = minikube_cluster.local.ip
+  value = k8s_cluster.local.ip
 }
 
 output "cluster_port" {
-  value = minikube_cluster.local.port
+  value = k8s_cluster.local.port
 }

@@ -4,9 +4,9 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
-    minikube = {
-      source  = "scott-the-programmer/minikube"
-      version = "~> 2.0"
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = "2.12.1"
     }
   }
 }
@@ -20,9 +20,21 @@ terraform {
   }
 }
 
-provider "minikube" {
+provider "kubernetes" {
   kubernetes_version = var.kubernetes_version
-  driver             = var.driver
+}
+
+resource "k8s_cluster" "local" {
+  driver       = var.driver
+  cluster_name = var.cluster_name
+  nodes        = var.node_count
+  cpus         = var.cpus
+  memory       = var.memory
+  addons = [
+    "dashboard",
+    "metrics-server",
+    "ingress",
+  ]
 }
 
 resource "null_resource" "kubectl_config" {
