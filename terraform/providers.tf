@@ -15,16 +15,11 @@ provider "aws" {
   region = var.region
 }
 
-terraform {
-  backend "s3" {
-  }
-}
-
 provider "kubernetes" {
-  kubernetes_version = var.kubernetes_version
+  host = var.k8s_host
 }
 
-resource "k8s_cluster" "local" {
+resource "kubernetes_cluster" "local" {
   driver       = var.driver
   cluster_name = var.cluster_name
   nodes        = var.node_count
@@ -41,6 +36,6 @@ resource "null_resource" "kubectl_config" {
   depends_on = [minikube_cluster.local]
 
   provisioner "local-exec" {
-    command = "minikube update-context --profile=${var.cluster_name}"
+    command = "minikube update-context --profile=${var.k8s_cluster_name}"
   }
 }

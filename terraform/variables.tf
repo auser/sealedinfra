@@ -1,3 +1,4 @@
+# AWS
 variable "region" {
   description = "The AWS region to deploy in"
   type        = string
@@ -66,4 +67,33 @@ variable "egress_rules" {
 variable "role_name" {
   description = "instance role for ssm login"
   type        = string
+}
+
+
+# Kubernetes
+variable "k8s_host" {
+  type    = string
+  default = "https://127.0.0.1:6443"
+}
+
+variable "k8s_cluster_name" {
+  type    = string
+  default = "sealedinfra"
+}
+
+variable "k8s_client_certificate" {
+  type = string
+}
+
+variable "k8s_client_key" {
+  type = string
+}
+
+variable "k8s_cluster_ca_certificate" {
+  type = string
+}
+
+variable "k8s_version" {
+  type    = string
+  default = "1.30.0"
 }

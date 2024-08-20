@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use clap::Parser;
 use log::info;
 
-use crate::{error::SealedResult, settings::Settings, util::stream_command_output};
+use crate::{error::SealedResult, settings::Settings, util::command::stream_command_output};
 
 #[derive(Parser, Debug, Clone)]
 #[command(version, about, long_about = None)]

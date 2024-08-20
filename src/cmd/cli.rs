@@ -8,6 +8,7 @@ use crate::{error::SealedResult, logger::init_logging, settings::init_config};
 
 mod cluster;
 mod info;
+mod terraform;
 
 #[derive(Debug, Parser)]
 #[command(version, about, long_about = None)]
@@ -42,8 +43,10 @@ impl Default for Cli {
 pub enum Command {
     #[command(about = "Show information about sealedinfra")]
     Info(InfoArgs),
-    #[command(about = "Manage clusters")]
+    #[command(about = "Manage clusters", alias = "c")]
     Cluster(cluster::ClusterArgs),
+    #[command(about = "Manage terraform", alias = "t")]
+    Terraform(terraform::TerraformArgs),
 }
 
 pub async fn exec() -> SealedResult {
@@ -54,6 +57,7 @@ pub async fn exec() -> SealedResult {
     match cli.cmd {
         Command::Info(args) => info::run(args, &cfg).await?,
         Command::Cluster(args) => cluster::run(args, &cfg).await?,
+        Command::Terraform(args) => terraform::run(args, &cfg).await?,
     }
     Ok(())
 }
