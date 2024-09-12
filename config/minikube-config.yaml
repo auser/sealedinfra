@@ -1,0 +1,10 @@
+clusters:
+  - cluster:
+      server: http://localhost:8001
+    name: proxy
+
+contexts:
+  - context:
+      cluster: proxy
+      user: minikube
+    name: proxy

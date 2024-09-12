@@ -2,10 +2,7 @@ use anyhow::{Context, Result};
 use async_recursion::async_recursion;
 use k8s_openapi::api::apps::v1::Deployment;
 use k8s_openapi::api::core::v1::{ConfigMap, Service};
-use kube::{
-    api::{Api, DeleteParams, ListParams, PostParams, WatchEvent},
-    Client, Resource,
-};
+use kube::Client;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap};
 use std::fs;
@@ -14,24 +11,21 @@ use tokio;
 use crate::error::SealedResult;
 
 use super::app_config::AppConfig;
-
-#[derive(Debug, Serialize, Deserialize)]
-struct Config {
-    apps: HashMap<String, AppConfig>,
-}
+use super::operator::crd::FpApp;
 
 struct K8sController {
     client: Client,
-    config: Config,
+    app: AppConfig,
+    fp_app: FpApp,
 }
 
 impl K8sController {
-    async fn new(config_path: &str) -> Result<Self> {
-        let config_str = fs::read_to_string(config_path).context("Failed to read config file")?;
-        let config: Config =
-            serde_yaml::from_str(&config_str).context("Failed to parse config file")?;
-        let client = Client::try_default().await?;
-        Ok(Self { client, config })
+    async fn new(client: Client, app: AppConfig, fp_app: FpApp) -> Result<Self> {
+        Ok(Self {
+            client,
+            app,
+            fp_app,
+        })
     }
 
     async fn deploy_apps(&self) -> Result<()> {
