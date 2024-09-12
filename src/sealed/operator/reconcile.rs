@@ -3,6 +3,7 @@ use std::sync::Arc;
 use super::crd::FpApp;
 use super::finalizer;
 use crate::error::{SealedError, SealedResult};
+use crate::sealed::controller::SIController;
 use kube::runtime::controller::Action;
 use kube::Client;
 use kube::Resource;
@@ -30,17 +31,21 @@ pub async fn reconcile(fp_app: Arc<FpApp>, context: Arc<ContextData>) -> SealedR
     let namespace = fp_app.namespace().unwrap_or("default".to_string());
     let name = fp_app.name_any();
 
+    let arc_client = Arc::new(client.clone());
+
+    let si_controller = SIController::new(arc_client.clone(), fp_app.clone()).await?;
+
     match determine_action(&fp_app) {
         SealedAction::Create => {
             finalizer::add(client.clone(), &name, &namespace).await?;
 
-            deploy_app(client.clone(), &fp_app, context).await?;
+            si_controller.deploy_app().await?;
             Ok(Action::await_change())
         }
         SealedAction::Delete => {
             finalizer::delete(client.clone(), &name, &namespace).await?;
 
-            delete_app(client.clone(), &fp_app, context).await?;
+            si_controller.delete_app().await?;
             Ok(Action::await_change())
         }
         SealedAction::NoOp => {
@@ -48,14 +53,6 @@ pub async fn reconcile(fp_app: Arc<FpApp>, context: Arc<ContextData>) -> SealedR
             Ok(Action::requeue(Duration::from_secs(10)))
         }
     }
-}
-
-async fn deploy_app(client: Client, fp_app: &FpApp, context: Arc<ContextData>) -> SealedResult<()> {
-    Ok(())
-}
-
-async fn delete_app(client: Client, fp_app: &FpApp, context: Arc<ContextData>) -> SealedResult<()> {
-    Ok(())
 }
 
 fn determine_action(fp_app: &FpApp) -> SealedAction {
