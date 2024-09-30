@@ -1,0 +1,10 @@
+{
+  "rust-analyzer.cargo.features": [
+    "server",
+    "default",
+    "postgres"
+  ],
+  "rust-analyzer.cargo.buildScripts": [
+    "cargo build --release"
+  ]
+}

@@ -1,0 +1,75 @@
+
+services:
+  postgres:
+    build: 
+      context: .
+      dockerfile: docker/Dockerfile.db
+    restart: always
+    env_file: ./.env
+    environment:
+      POSTGRES_HOST_AUTH_METHOD: trust
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vscode"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    expose:
+      - "5532:5432"
+    ports:
+      - "5532:5432"
+    networks:
+      - sealedinfra
+
+  envoy:
+    build:
+      context: ./envoy
+      dockerfile: Dockerfile
+    ports:
+      - "7770:7770"
+      - "7771:7771"
+    networks:
+      - sealedinfra
+
+  development:
+    hostname: sealedinfra
+    build: 
+      context: .
+      dockerfile: docker/Dockerfile
+
+    privileged: true
+    init: true
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    
+    volumes:
+      - ..:/workspace:cached
+      - ~/.ssh:/home/host-ssh:cached
+      # We need this so docker in docker works
+      - /var/run/docker.sock:/var/run/docker.sock
+      - target:/workspace/target # Set target as a volume for performance. 
+
+    env_file: ./.env
+    environment:
+      RUST_LOG: info
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5532/${POSTGRES_DB}?sslmode=disable
+      TEST_DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5532/${POSTGRES_DB}_test?sslmode=disable
+
+    # Overrides default command so things don't shut down after the process ends.
+    command: sleep infinity
+
+    working_dir: /workspace
+    ports:
+      - "9999:9999"
+    networks:
+      - sealedinfra
+    depends_on:
+      - postgres
+      # - mailhog
+
+  
+volumes:
+  target:
+
+networks:
+  sealedinfra:
+    driver: bridge

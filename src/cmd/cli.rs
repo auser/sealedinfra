@@ -2,13 +2,15 @@ use std::path::PathBuf;
 
 use clap::Parser;
 use info::InfoArgs;
-use log::LevelFilter;
+use tracing::level_filters::LevelFilter;
 
-use crate::{error::SealedResult, logger::init_logging, settings::init_config};
+use crate::{error::SealedResult, settings::init_config, util::tracing::setup_tracing};
 
 mod cluster;
 mod info;
 pub(crate) mod sealedinfra;
+#[cfg(feature = "server")]
+mod serverinfra;
 mod terraform;
 
 #[derive(Debug, Parser)]
@@ -34,7 +36,7 @@ impl Default for Cli {
         Cli {
             verbose: false,
             root: None,
-            log_level: LevelFilter::Info,
+            log_level: LevelFilter::INFO,
             cmd: Command::Info(InfoArgs {}),
         }
     }
@@ -50,11 +52,15 @@ pub enum Command {
     Terraform(terraform::TerraformArgs),
     #[command(about = "Manage sealedinfra", alias = "sealedinfra")]
     SI(sealedinfra::SealedInfraArgs),
+    #[command(about = "Manage server infrastructure")]
+    #[cfg(feature = "server")]
+    Server(serverinfra::ServerInitArgs),
 }
 
 pub async fn exec() -> SealedResult {
+    dotenv::dotenv().ok();
     let cli = Cli::parse();
-    init_logging(cli.log_level).await?;
+    setup_tracing(Some(cli.log_level)).await;
     let cfg = init_config(cli.root).expect("Unable to initialize config");
 
     match cli.cmd {
@@ -62,6 +68,8 @@ pub async fn exec() -> SealedResult {
         Command::Cluster(args) => cluster::run(args, &cfg).await?,
         Command::Terraform(args) => terraform::run(args, &cfg).await?,
         Command::SI(args) => sealedinfra::run(args, &cfg).await?,
+        #[cfg(feature = "server")]
+        Command::Server(args) => serverinfra::run(args, &cfg).await?,
     }
     Ok(())
 }

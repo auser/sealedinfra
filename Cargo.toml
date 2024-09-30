@@ -3,28 +3,87 @@ name = "sealedinfra"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+default = ["sqlx/sqlite", "dotenv", "clap"]
+server = [
+  "axum",
+  "gix",
+  "git2",
+  "tower-http",
+  "utoipa",
+  "utoipa-axum",
+  "utoipa-swagger-ui",
+]
+sqlite = ["sqlx/sqlite"]
+postgres = ["sqlx/postgres"]
+
+[workspace]
+resolver = "2"
+members = ["crates/cli", "crates/server"]
+
 [dependencies]
 anyhow = "1.0.86"
 async-recursion = "1.1.1"
-axum = { version = "0.7.5", features = ["ws"] }
-clap = { version = "4.5.14", features = ["derive", "unstable-doc"] }
+axum = { version = "0.7.5", features = ["macros", "ws"], optional = true }
+bstr = "1.10.0"
+chrono = { version = "0.4.38", features = ["serde"] }
+clap = { version = "4.5.14", features = [
+  "derive",
+  "unstable-doc",
+], optional = true }
 config = "0.14.0"
+dotenv = { version = "0.15.0", features = ["clap"], optional = true }
 env_logger = "0.11.5"
 futures = "0.3.30"
-k8s-openapi = { version = "0", features = ["latest", "v1_30"] }
-kube = { version = "0", features = ["runtime", "derive", "client"] }
+git2 = { version = "0.19.0", features = ["ssh"], optional = true }
+gix = { version = "0.66.0", features = [
+  "blocking-http-transport-reqwest",
+  "blocking-http-transport-reqwest-rust-tls",
+], optional = true }
+hex = { version = "0.4.3", features = ["serde"] }
+
+k8s-openapi = { version = "0.23.0", features = ["v1_30"] }
+kube = { version = "0.95", features = ["runtime", "derive", "client"] }
 log = { version = "0.4.22", features = ["serde"] }
+memmem = "0.1.1"
+num_cpus = "1.16.0"
 schemars = { version = "0.8.21", features = ["uuid", "chrono"] }
 serde = { version = "1.0.205", features = ["derive"] }
 serde_json = "1.0.128"
 serde_yaml = "0.9.34"
+sha1 = "0.10.6"
+sqlx = { version = "0.8.0", features = [
+  "runtime-tokio-native-tls",
+  "postgres",
+  "chrono",
+  "uuid",
+] }
+tempfile = "3.12.0"
 thiserror = "1.0.63"
 tokio = { version = "1.39.2", features = ["full", "macros", "rt-multi-thread"] }
+tower-http = { version = "0.6", features = ["fs", "cors"], optional = true }
 tracing = { version = "0.1.40", features = ["log"] }
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
+utoipa = { version = "4.2.3", features = [
+  "axum_extras",
+  "openapi_extensions",
+  "chrono",
+], optional = true }
+utoipa-axum = { version = "0.1.0-beta.2", optional = true }
+utoipa-swagger-ui = { version = "7.1.0", features = ["axum"], optional = true }
+
+[dependencies.libsqlite3-sys]
+version = "0.28"
+features = ["bundled"]
 
 [dev-dependencies]
-k8s-openapi = { version = "0.22.0", features = ["v1_30"] }
+tempfile = "3.12.0"
+sqlx = { version = "0.8.0", features = [
+  "runtime-tokio-native-tls",
+  "sqlite",
+  "chrono",
+  "uuid",
+] }
 
 [build-dependencies]
 vergen-gitcl = { version = "1", features = ["build", "cargo", "rustc"] }

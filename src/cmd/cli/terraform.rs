@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use clap::Parser;
 
 use crate::{
@@ -32,8 +33,11 @@ pub async fn init(args: InitArgs, _config: &Settings) -> SealedResult<()> {
     Ok(())
 }
 
-pub async fn run(args: TerraformArgs, config: &Settings) -> SealedResult<()> {
-    match args.command {
-        TerraformCommand::Init(init_args) => init(init_args, config).await,
-    }
+pub async fn run(args: TerraformArgs, _config: &Settings) -> SealedResult<()> {
+    println!("Terraform args: {:?}", args);
+    eprintln!("Terraform not implemented yet");
+    Ok(())
+    // match args.command {
+    //     TerraformCommand::Init(init_args) => init(init_args, config).await,
+    // }
 }

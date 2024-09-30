@@ -1,0 +1,188 @@
+# Do all the cargo install stuff
+FROM rust:slim-bookworm as builder
+
+# Configure apt and install packages
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        libpq-dev \
+        curl \
+        wget \
+        xz-utils \
+        build-essential \
+        libssl-dev \
+        librust-openssl-dev \
+        python3 python3-pip \
+        unzip cmake
+
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs -y | sh
+
+RUN curl https://github.com/watchexec/cargo-watch/releases/download/v8.5.2/cargo-watch-v8.5.2-aarch64-apple-darwin.tar.xz -L -o cargo-watch.tar.xz \
+    && tar -xf cargo-watch.tar.xz \
+    && mv cargo-watch-v8.5.2-aarch64-apple-darwin/cargo-watch /home
+
+RUN CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse cargo install cornucopia 
+RUN CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse cargo install cargo-chef --locked
+
+# Install cargo-binstall, which makes it easier to install other
+# cargo extensions like cargo-leptos
+# RUN wget https://github.com/cargo-bins/cargo-binstall/releases/latest/download/cargo-binstall-x86_64-unknown-linux-musl.tgz
+# RUN tar -xvf cargo-binstall-x86_64-unknown-linux-musl.tgz
+# RUN cp cargo-binstall /usr/local/cargo/bin
+
+# Install cargo-leptos
+# RUN cargo binstall cargo-leptos -y
+
+FROM rust:slim-bookworm
+
+ARG CLOAK_VERSION=1.19.4
+ARG DBMATE_VERSION=2.7.0
+ARG MOLD_VERSION=2.30.0
+ARG EARTHLY_VERSION=0.8.9
+ARG DOCKER_COMPOSE_VERSION=2.23.0
+ARG K9S_VERSION=0.32.4
+ARG ARCH=aarch64
+ARG KIND_VERSION=0.17.0
+
+# This Dockerfile adds a non-root 'vscode' user with sudo access. However, for Linux,
+# this user's GID/UID must match your local user UID/GID to avoid permission issues
+# with bind mounts. Update USER_UID / USER_GID if yours is not 1000. See
+# https://aka.ms/vscode-remote/containers/non-root-user for details.
+ARG USERNAME=vscode
+ARG USER_UID=1000
+ARG USER_GID=$USER_UID
+
+# Avoid warnings by switching to noninteractive
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Configure apt and install packages
+RUN apt-get -y update -yq \
+    && apt-get install -y --no-install-recommends \
+        git \
+        curl \
+        wget \
+        ssh \
+        sudo \
+        jq \
+        build-essential \
+        protobuf-compiler \
+        musl-dev \
+        musl-tools \
+        musl \
+        apt-transport-https \
+        ca-certificates \
+        gnupg-agent \
+        gnupg \
+        software-properties-common \
+        postgresql-client \
+        npm \
+        nodejs \
+        zsh \
+        git \
+        python3-pip \
+        python3-poetry \
+        pkg-config \
+        libseccomp-dev \
+        postgresql-contrib \
+        postgresql-server-dev-15 \
+    # Clean up
+    && apt-get autoremove -y \
+    && apt-get clean -y \
+    && rm -r /var/cache/* /var/lib/apt/lists/*
+
+    # Docker Engine for Earthly. https://docs.docker.com/engine/install/debian/
+RUN install -m 0755 -d /etc/apt/keyrings \
+    && curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg \
+    && chmod a+r /etc/apt/keyrings/docker.gpg \
+    && curl -fsSL "https://download.docker.com/linux/debian/gpg" | apt-key add - \
+    && echo \
+        "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian \
+        "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
+        tee /etc/apt/sources.list.d/docker.list > /dev/null \
+    && apt-get -y update \
+    && apt-get -y --no-install-recommends install docker-ce docker-ce-cli containerd.io \
+    && apt-get autoremove -y && apt-get clean -y
+
+    # Create a non-root user
+RUN groupadd --gid $USER_GID $USERNAME \
+    && useradd -s /usr/bin/zsh --uid $USER_UID --gid $USER_GID -m $USERNAME -d /home/$USERNAME \
+    && echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME\
+    && chmod 0440 /etc/sudoers.d/$USERNAME \
+    && usermod -aG docker $USERNAME \
+    # Rust tools
+    && rustup component add rustfmt clippy \
+    # Add the musl toolchain
+    && rustup target add x86_64-unknown-linux-musl \
+    && rustup target add wasm32-unknown-unknown
+
+# Database migrations   
+RUN curl -fsSL -o /usr/local/bin/dbmate https://github.com/amacneil/dbmate/releases/latest/download/dbmate-linux-$(dpkg --print-architecture) \
+    && chmod +x /usr/local/bin/dbmate
+
+# Mold - Fast Rust Linker
+RUN curl -OL https://github.com/rui314/mold/releases/download/v$MOLD_VERSION/mold-$MOLD_VERSION-$ARCH-linux.tar.gz \
+    && tar -xf mold-$MOLD_VERSION-$ARCH-linux.tar.gz \
+    && mv ./mold-$MOLD_VERSION-$ARCH-linux/bin/mold /usr/bin/ \
+    && mv ./mold-$MOLD_VERSION-$ARCH-linux/lib/mold/mold-wrapper.so /usr/bin/ \
+    && rm mold-$MOLD_VERSION-$ARCH-linux.tar.gz \
+    && rm -rf ./mold-$MOLD_VERSION-$ARCH-linux \
+    && chmod +x /usr/bin/mold
+
+RUN curl -L https://github.com/docker/compose/releases/download/v$DOCKER_COMPOSE_VERSION/docker-compose-linux-$ARCH -o /usr/local/bin/docker-compose \
+    && chmod +x /usr/local/bin/docker-compose
+
+    # Install kubernetes
+    # K9s
+RUN curl -L -s https://github.com/derailed/k9s/releases/download/v$K9S_VERSION/k9s_Linux_$(dpkg --print-architecture).tar.gz | tar xvz -C /tmp \
+    && mv /tmp/k9s /usr/bin \
+    && rm -rf k9s_Linux_$(dpkg --print-architecture).tar.gz
+    # Kind
+RUN curl -Lo ./kind https://kind.sigs.k8s.io/dl/v$KIND_VERSION/kind-linux-$(dpkg --print-architecture) \
+    && chmod +x ./kind \
+    && mv ./kind /usr/local/bin/kind
+
+# k3s
+# RUN curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash
+RUN curl -s https://raw.githubusercontent.com/rancher/k3d/main/install.sh | USE_SUDO=false K3D_INSTALL_DIR=/usr/local/bin bash
+
+# Kubectl
+RUN curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/arm64/kubectl" \
+    && install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+
+# Just
+RUN curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to ~/bin \
+    && mv ~/bin/just /usr/local/bin
+
+# Direnv
+RUN curl -sfL https://direnv.net/install.sh | bash
+
+# PGEnv
+RUN git clone https://github.com/theory/pgenv.git ~/.pgenv
+
+# pgmq
+RUN git clone https://github.com/tembo-io/pgmq.git \
+    && cd pgmq/pgmq-extension \
+    && make \
+    && make install
+
+# Docker debian
+RUN curl https://raw.githubusercontent.com/microsoft/vscode-dev-containers/main/script-library/docker-debian.sh \
+| bash -s -- true /var/run/docker-host.sock /var/run/docker.sock vscode false latest
+
+USER $USERNAME
+
+# Pip for python
+# RUN pip install poetry \
+    # && poetry config warnings.export false
+
+# Copy the binaries we built in builder container
+COPY --chown=$USERNAME --from=builder /home/cargo-watch $CARGO_HOME/bin
+COPY --chown=$USERNAME --from=builder /usr/local/cargo/bin/cargo-chef $CARGO_HOME/bin
+# COPY --chown=$USERNAME --from=builder /usr/local/cargo/bin/cargo-leptos $CARGO_HOME/bin
+COPY --chown=$USERNAME --from=builder /usr/local/cargo/bin/cornucopia $CARGO_HOME/bin
+
+# Pulumi
+RUN curl -fsSL https://get.pulumi.com | sudo -E bash - \
+    && sudo chown -R $USERNAME:$USERNAME /home/$USERNAME/.pulumi
+
+RUN sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+

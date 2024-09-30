@@ -12,7 +12,7 @@ use std::sync::Arc;
 use crate::{error::SealedResult, util::tracing::setup_tracing};
 
 pub async fn operator() -> SealedResult<()> {
-    setup_tracing();
+    setup_tracing(None).await;
 
     let kubernetes_client = Client::try_default().await?;
 
