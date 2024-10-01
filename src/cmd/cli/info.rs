@@ -10,7 +10,7 @@ pub async fn run(_args: InfoArgs, _config: &Settings) -> SealedResult<()> {
         "{} {} ({})",
         std::env::var("CARGO_PKG_VERSION").unwrap(),
         std::env::var("VERGEN_BUILD_DATE").unwrap(),
-        std::env::var("VERGEN_GIT_SHA").unwrap()[..8].to_string()
+        &std::env::var("VERGEN_GIT_SHA").unwrap()[..8]
     );
     Ok(())
 }

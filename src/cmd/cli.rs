@@ -67,15 +67,15 @@ pub enum Command {
 pub async fn exec() -> SealedResult {
     dotenv::dotenv().ok();
     let cli = Cli::parse();
-    setup_tracing(Some(cli.log_level.clone())).await;
+    setup_tracing(Some(cli.log_level)).await;
     let cfg = init_config(&cli).expect("Unable to initialize config");
 
     match cli.cmd {
-        Command::Info(args) => info::run(args, &cfg).await?,
-        Command::Cluster(args) => cluster::run(args, &cfg).await?,
-        Command::Terraform(args) => terraform::run(args, &cfg).await?,
-        Command::SI(args) => sealedinfra::run(args, &cfg).await?,
-        Command::Docker(args) => docker_handler::run(args, &cfg).await?,
+        Command::Info(args) => info::run(args, cfg).await?,
+        Command::Cluster(args) => cluster::run(args, cfg).await?,
+        Command::Terraform(args) => terraform::run(args, cfg).await?,
+        Command::SI(args) => sealedinfra::run(args, cfg).await?,
+        Command::Docker(args) => docker_handler::run(args, cfg).await?,
         // #[cfg(feature = "server")]
         // Command::Server(args) => serverinfra::run(args, &cfg).await?,
     }

@@ -1,5 +1,6 @@
 #![allow(unused)]
 pub(crate) mod command;
+pub(crate) mod docker_helpers;
 pub(crate) mod fs_utils;
 pub(crate) mod git_ops;
 pub mod macs;

@@ -8,6 +8,7 @@ use std::path::{Path, PathBuf};
 use tracing::info;
 
 use crate::{
+    cmd::cli::docker_handler::docker_utils::build_docker_run_command,
     error::{SealedError, SealedResult},
     settings::Settings,
     util::{fs_utils::make_dirs, git_ops::parse_repo_name},
@@ -16,20 +17,24 @@ use crate::{
 use super::DockerHandlerArgs;
 
 pub async fn run(args: DockerHandlerArgs, config: &Settings) -> SealedResult<()> {
-    if args.repository.is_none() {
+    let repo = args.clone().repository;
+    if repo.is_none() {
         return Err(SealedError::Runtime(anyhow::anyhow!(
             "Repository is not set"
         )));
     }
-    let repo = args.repository.unwrap();
-    let branch = args.branch.unwrap_or("main".to_string());
-    let repo = GitRepoService::fetch(&repo, &branch, config)?;
+    let branch = args.branch.clone().unwrap_or("main".to_string());
+    let repo = GitRepoService::fetch(&repo.clone().unwrap(), &branch, config)?;
 
     info!("Repository cloned: {}", repo.path().display());
+
+    let command = build_docker_run_command(args, &repo.path().to_path_buf(), config)?;
+    println!("\n{:?}", command);
+
     Ok(())
 }
 
-struct GitRepoService;
+pub struct GitRepoService;
 
 impl GitRepoService {
     pub fn fetch(repo: &str, branch_name: &str, settings: &Settings) -> SealedResult<Repository> {

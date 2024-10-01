@@ -1,0 +1,5 @@
+repository: git@bitbucket.org:financialpayments/tupay.git
+branch: origin/eol/upgrade
+env: 
+  - USER=vscode
+user: root

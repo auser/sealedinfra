@@ -46,9 +46,7 @@ async fn create(args: CreateArgs, _config: &Settings) -> SealedResult<()> {
     let cluster_name = args.name;
     info!("Creating cluster {}", cluster_name);
 
-    let kind_config = args
-        .kind_config
-        .unwrap_or_else(|| get_default_kind_config());
+    let kind_config = args.kind_config.unwrap_or_else(get_default_kind_config);
     info!("Using kind config {}", kind_config.display());
 
     stream_command_output(
