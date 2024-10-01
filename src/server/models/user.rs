@@ -49,18 +49,18 @@ impl User {
 
 #[cfg(test)]
 mod tests {
-    use sqlx::Sqlite;
-
     use super::*;
 
     #[tokio::test]
     async fn test_find_by_username() {
-        let sqlitedb = sqlx::sqlite::SqlitePool::connect("sqlite::memory:")
-            .await
-            .unwrap();
-        let db = AppDatabase::new(sqlitedb).await.unwrap();
+        let pool = sqlx::postgres::PgPool::connect(
+            "postgresql://postgres:postgres@localhost:5432/postgres",
+        )
+        .await
+        .unwrap();
+        let db = AppDatabase::new(pool).await.unwrap();
         let user = User::find_by_username("testuser", &db).await;
-        assert_eq!(user.is_ok(), true);
-        assert_eq!(user.unwrap().is_some(), true);
+        assert!(user.is_ok());
+        assert!(user.unwrap().is_some());
     }
 }

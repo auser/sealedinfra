@@ -72,6 +72,7 @@ mod tests {
 
     #[test]
     fn test_hash_new_from_str() {
+        println!("8ab686eafeb1f44702738c8b0f24f2567c36da6d");
         let hash = GitHash::new_from_str("8ab686eafeb1f44702738c8b0f24f2567c36da6d");
         assert_eq!(
             hash.to_plain_str(),

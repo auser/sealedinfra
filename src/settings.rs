@@ -54,8 +54,7 @@ impl Settings {
 
 impl From<Cli> for Settings {
     fn from(args: Cli) -> Self {
-        let settings = Settings::from_root(args.root).expect("Unable to get settings");
-        settings
+        Settings::from_root(args.root).expect("Unable to get settings")
     }
 }
 

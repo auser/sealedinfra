@@ -17,10 +17,6 @@ server = [
 sqlite = ["sqlx/sqlite"]
 postgres = ["sqlx/postgres"]
 
-[workspace]
-resolver = "2"
-members = ["crates/cli", "crates/server"]
-
 [dependencies]
 anyhow = "1.0.86"
 async-recursion = "1.1.1"
