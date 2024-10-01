@@ -15,14 +15,24 @@ pub static CONFIG_INSTANCE: OnceLock<Settings> = OnceLock::new();
 pub struct Settings {
     #[serde(default = "default_log_level")]
     pub log_level: LevelFilter,
+
+    #[serde(default = "default_working_directory")]
+    pub working_directory: PathBuf,
+
+    #[serde(default = "default_ssh_key")]
+    pub ssh_key: Option<PathBuf>,
 }
 
 pub fn get_config() -> SealedResult<&'static Settings> {
     Ok(CONFIG_INSTANCE.get().expect("Config not initialized"))
 }
 
-pub fn init_config(root: Option<PathBuf>) -> SealedResult<&'static Settings> {
-    let settings = Settings::from_root(root).expect("Unable to get settings");
+pub fn init_config(cli: &Cli) -> SealedResult<&'static Settings> {
+    let root = match &cli.settings {
+        None => PathBuf::from(&cli.root.clone().unwrap()),
+        Some(settings) => settings.clone(),
+    };
+    let settings = Settings::from_root(Some(root))?;
     CONFIG_INSTANCE
         .set(settings)
         .expect("Config already initialized");
@@ -38,6 +48,7 @@ impl Settings {
         let run_mode = env::var("RUN_MODE").unwrap_or_else(|_| "development".to_string());
 
         let s = config::Config::builder()
+            .add_source(File::from(root.as_path()))
             .add_source(File::with_name("config").required(false))
             .add_source(File::with_name("config/default").required(false))
             .add_source(File::with_name(&format!("config.{}", run_mode)).required(false))
@@ -60,4 +71,13 @@ impl From<Cli> for Settings {
 
 fn default_log_level() -> LevelFilter {
     LevelFilter::Info
+}
+
+fn default_working_directory() -> PathBuf {
+    PathBuf::from("/tmp")
+}
+
+fn default_ssh_key() -> Option<PathBuf> {
+    let home = env::var("HOME").unwrap();
+    Some(PathBuf::from(format!("{home}/.ssh/id_rsa")))
 }

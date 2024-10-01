@@ -1,4 +1,3 @@
-#[cfg(feature = "server")]
 use axum::{http::StatusCode, Json};
 use kube::core::gvk::ParseGroupVersionError;
 use serde_json::Value;
@@ -19,11 +18,12 @@ pub enum SealedError {
     Parsing(#[from] ParseGroupVersionError),
     #[error("Timeout error: {0}")]
     Timeout(#[from] tokio::time::error::Elapsed),
-    #[cfg(feature = "server")]
-    #[error("Git2 error: {0}")]
-    Git2(#[from] git2::Error),
     #[error("Git operation failed: {0}")]
     GitOperationFailed(String),
+    #[error("Git2 operation failed: {0}")]
+    Git2OperationFailed(#[from] git2::Error),
+    #[error("Git url parse error: {0}")]
+    GitUrlParseError(#[from] git_url_parse::GitUrlParseError),
 
     /// Any error originating from the `kube-rs` crate
     #[error("Kubernetes reported error: {source}")]
@@ -34,7 +34,7 @@ pub enum SealedError {
     /// Error in user input or Bionic resource definition, typically missing fields.
     //#[error("Invalid Bionic CRD: {0}")]
     //UserInput(String),
-    #[error("Invalid Kubernetes Json: {source}")]
+    #[error("Invalid Json: {source}")]
     Json {
         #[from]
         source: serde_json::Error,
@@ -59,14 +59,12 @@ pub enum SealedError {
     NoData,
 }
 
-#[cfg(feature = "server")]
 impl From<axum::http::StatusCode> for SealedError {
     fn from(status: axum::http::StatusCode) -> Self {
         SealedError::ServerError(status.to_string())
     }
 }
 
-#[cfg(feature = "server")]
 impl From<(StatusCode, Json<Value>)> for SealedError {
     fn from(status: (StatusCode, Json<Value>)) -> Self {
         // TODO: include StatusCode in the error message

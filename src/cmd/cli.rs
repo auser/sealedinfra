@@ -7,10 +7,11 @@ use tracing::level_filters::LevelFilter;
 use crate::{error::SealedResult, settings::init_config, util::tracing::setup_tracing};
 
 mod cluster;
+mod docker_handler;
 mod info;
 pub(crate) mod sealedinfra;
-#[cfg(feature = "server")]
-mod serverinfra;
+// #[cfg(feature = "server")]
+// mod serverinfra;
 mod terraform;
 
 #[derive(Debug, Parser)]
@@ -27,6 +28,9 @@ pub struct Cli {
     #[clap(short('l'), long, value_name("LEVEL"), default_value("info"))]
     pub log_level: LevelFilter,
 
+    #[arg(short, long)]
+    pub settings: Option<PathBuf>,
+
     #[command(subcommand)]
     pub cmd: Command,
 }
@@ -34,6 +38,7 @@ pub struct Cli {
 impl Default for Cli {
     fn default() -> Self {
         Cli {
+            settings: Some(PathBuf::from("config/config.yaml")),
             verbose: false,
             root: None,
             log_level: LevelFilter::INFO,
@@ -52,24 +57,27 @@ pub enum Command {
     Terraform(terraform::TerraformArgs),
     #[command(about = "Manage sealedinfra", alias = "sealedinfra")]
     SI(sealedinfra::SealedInfraArgs),
-    #[command(about = "Manage server infrastructure")]
-    #[cfg(feature = "server")]
-    Server(serverinfra::ServerInitArgs),
+    #[command(about = "Handle docker generation", alias = "dh")]
+    Docker(docker_handler::DockerHandlerArgs),
+    // #[command(about = "Manage server infrastructure")]
+    // #[cfg(feature = "server")]
+    // Server(serverinfra::ServerInitArgs),
 }
 
 pub async fn exec() -> SealedResult {
     dotenv::dotenv().ok();
     let cli = Cli::parse();
-    setup_tracing(Some(cli.log_level)).await;
-    let cfg = init_config(cli.root).expect("Unable to initialize config");
+    setup_tracing(Some(cli.log_level.clone())).await;
+    let cfg = init_config(&cli).expect("Unable to initialize config");
 
     match cli.cmd {
         Command::Info(args) => info::run(args, &cfg).await?,
         Command::Cluster(args) => cluster::run(args, &cfg).await?,
         Command::Terraform(args) => terraform::run(args, &cfg).await?,
         Command::SI(args) => sealedinfra::run(args, &cfg).await?,
-        #[cfg(feature = "server")]
-        Command::Server(args) => serverinfra::run(args, &cfg).await?,
+        Command::Docker(args) => docker_handler::run(args, &cfg).await?,
+        // #[cfg(feature = "server")]
+        // Command::Server(args) => serverinfra::run(args, &cfg).await?,
     }
     Ok(())
 }
