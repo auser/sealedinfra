@@ -11,7 +11,7 @@ use crate::{
     cmd::cli::docker_handler::docker_utils::build_docker_run_command,
     error::{SealedError, SealedResult},
     settings::Settings,
-    util::{fs_utils::make_dirs, git_ops::parse_repo_name},
+    util::{docker_helpers::command_to_string, fs_utils::make_dirs, git_ops::parse_repo_name},
 };
 
 use super::DockerHandlerArgs;
@@ -29,7 +29,8 @@ pub async fn run(args: DockerHandlerArgs, config: &Settings) -> SealedResult<()>
     info!("Repository cloned: {}", repo.path().display());
 
     let command = build_docker_run_command(args, &repo.path().to_path_buf(), config)?;
-    println!("\n{:?}", command);
+    let command_str = command_to_string(&command);
+    println!("\n{}", command_str);
 
     Ok(())
 }
@@ -131,7 +132,6 @@ impl GitRepoService {
     ) -> SealedResult<()> {
         let remote_name = "origin";
 
-        println!("updating from remote");
         let mut fo = Self::get_fetch_options(settings)?;
 
         // Create fetch options

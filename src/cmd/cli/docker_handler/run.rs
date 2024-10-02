@@ -19,7 +19,7 @@ pub async fn run(args: DockerHandlerArgs, config: &Settings) -> SealedResult<()>
     tracing::info!("Repository cloned: {}", repo.path().display());
 
     let mut command = build_docker_run_command(args, &repo.path().to_path_buf(), config)?;
-    let output = command.output().await?;
+    let output = command.output()?;
     println!("{:?}", output);
     Ok(())
 }

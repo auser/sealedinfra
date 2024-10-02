@@ -5,7 +5,7 @@ use axum::http::{header::CONTENT_TYPE, Method};
 use tokio::net::TcpListener;
 use tower_http::cors::{Any, CorsLayer};
 
-use crate::error::SealedResult;
+use crate::{error::SealedResult, settings::ServerArgs};
 
 mod app_state;
 pub(crate) mod git;
@@ -13,17 +13,6 @@ mod models;
 pub(crate) mod repo;
 mod routes;
 pub(crate) mod utils;
-
-#[derive(Debug)]
-pub struct ServerArgs {
-    pub port: u16,
-}
-
-impl Default for ServerArgs {
-    fn default() -> Self {
-        Self { port: 9999 }
-    }
-}
 
 #[derive(Debug)]
 pub struct Server {

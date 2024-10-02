@@ -97,8 +97,6 @@ impl DockerHandlerArgs {
                 SealedError::Runtime(anyhow::anyhow!("Failed to parse config file: {}", e))
             })?;
 
-            println!("config: {:#?}", config);
-
             if let Some(repo) = config.get("repository") {
                 merged.repository =
                     Some(repo.as_str().expect("Failed to get repository").to_string());
@@ -145,8 +143,6 @@ impl DockerHandlerArgs {
         if !self.commands.is_empty() {
             merged.commands = self.commands;
         }
-
-        println!("merged: {:#?}", merged);
 
         Ok(merged)
     }

@@ -12,6 +12,17 @@ use crate::error::SealedResult;
 pub static CONFIG_INSTANCE: OnceLock<Settings> = OnceLock::new();
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub struct ServerArgs {
+    pub port: u16,
+}
+
+impl Default for ServerArgs {
+    fn default() -> Self {
+        Self { port: 9999 }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Settings {
     #[serde(default = "default_log_level")]
     pub log_level: LevelFilter,
@@ -21,6 +32,9 @@ pub struct Settings {
 
     #[serde(default = "default_ssh_key")]
     pub ssh_key: Option<PathBuf>,
+
+    #[serde(default = "ServerArgs::default")]
+    pub server: ServerArgs,
 }
 
 pub fn get_config() -> SealedResult<&'static Settings> {

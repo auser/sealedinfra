@@ -1,6 +1,6 @@
 use std::{fmt::Display, path::PathBuf};
 
-use tokio::process::Command;
+use std::process::Command;
 
 use crate::{error::SealedResult, settings::Settings, util::git_ops::parse_repo_name};
 
@@ -27,7 +27,7 @@ impl From<DockerHandlerArgs> for Command {
             let bind = DockerBind::from(bind);
             command.arg("-v");
             command.arg(format!(
-                "{}:/{}:{}",
+                "{}:{}:{}",
                 bind.host_path, bind.container_path, bind.mode
             ));
         }
@@ -35,7 +35,7 @@ impl From<DockerHandlerArgs> for Command {
             let volume = DockerBind::from(volume);
             command.arg("-v");
             command.arg(format!(
-                "{}:/{}:{}",
+                "{}:{}:{}",
                 volume.host_path, volume.container_path, volume.mode
             ));
         }
