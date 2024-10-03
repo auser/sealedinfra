@@ -2,5 +2,21 @@
 authors = ["Ari Lerner <me@ari.io>"]
 language = "en"
 multilingual = false
-src = "src"
+src = "docs"
 title = "sealed infrastructure"
+
+[output.html]
+git-repository-url = "https://github.com/auser/sealedinfra"
+edit-url-template = "https://github.com/auser/sealedinfra/edit/main/docs/{path}"
+search.use-boolean-and = true
+
+[output.linkcheck]
+warning-policy = "error"
+
+[output.html.redirect]
+"/ci/github.html" = "./index.html"
+"/generic-builds.html" = "./custom-builds.html"
+"/way-too-quickstart.html" = "./quickstart/index.html"
+
+[preprocessor.toc]
+command = "mdbook-toc"

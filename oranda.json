@@ -1,14 +1,24 @@
 {
-  "project": {
-    "name": "SealedInfra"
-  },
   "build": {
-    "dist_dir": "public",
-    "static_dir": "static"
+    "static_dir": "assets"
+  },
+  "styles": {
+    "theme": "axolight",
+    "favicon": "./assets/favicon.ico"
   },
   "components": {
     "mdbook": {
-      "path": "./docs"
+      "path": "./book"
+    },
+    "artifacts": {
+      "package_managers": {
+        "preferred": {
+          "npm": "npm install -g sealedinfra",
+          "npx": "npx si -h",
+          "crates.io": "cargo install sealedinfra",
+          "homebrew": "brew install sealedinfra"
+        }
+      }
     }
   }
 }

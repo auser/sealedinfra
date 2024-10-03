@@ -89,6 +89,12 @@ anyhow = "1.0.86"
 inherits = "release"
 lto = "thin"
 
+[workspace.metadata.release]
+shared-version = true
+tag-name = "v{{version}}"
+pre-release-commit-message = "release: {{version}}"
+publish = false
+
 # Config for 'cargo dist'
 [workspace.metadata.dist]
 # The preferred cargo-dist version to use in CI (Cargo.toml SemVer syntax)
@@ -97,13 +103,12 @@ cargo-dist-version = "0.17.0"
 ci = "github"
 # The installers to generate for each app
 installers = ["shell", "npm", "homebrew", "msi"]
+# A GitHub repo to push Homebrew formulas to
+tap = "auser/homebrew-tap"
+# Publish jobs to run in CI
+publish-jobs = ["homebrew"]
 # Target platforms to build apps for (Rust target-triple syntax)
-targets = [
-  "aarch64-apple-darwin",
-  "x86_64-apple-darwin",
-  "x86_64-unknown-linux-gnu",
-  "x86_64-pc-windows-msvc",
-]
+targets = ["aarch64-apple-darwin", "x86_64-apple-darwin", "x86_64-unknown-linux-gnu", "x86_64-pc-windows-msvc"]
 # Publish jobs to run in CI
 pr-run-mode = "plan"
 # The archive format to use for windows builds (defaults .zip)
@@ -113,36 +118,21 @@ unix-archive = ".tar.gz"
 # Whether to install an updater program
 install-updater = false
 github-repo = "auser/sealedinfra"
+# Where to host releases
+hosting = "github"
+# Whether to enable GitHub Attestations
+github-attestations = true
+# Path that installers should place binaries in
+install-path = "CARGO_HOME"
 
-# # Config for 'cargo dist'
-# [package.metadata.dist]
-# # The preferred cargo-dist version to use in CI (Cargo.toml SemVer syntax)
-# cargo-dist-version = "0.17.0"
-# # The installers to generate for each app
-# installers = ["shell", "npm", "homebrew", "msi"]
-# # A GitHub repo to push Homebrew formulas to
-# tap = "auser/homebrew-tap"
-# # Publish jobs to run in CI
-# publish-jobs = ["homebrew"]
-# # Target platforms to build apps for (Rust target-triple syntax)
-# targets = [
-#   "aarch64-apple-darwin",
-#   "x86_64-apple-darwin",
-#   "x86_64-unknown-linux-gnu",
-#   "x86_64-pc-windows-msvc",
-# ]
-# # CI backends to support
-# ci = "github"
-# # Publish jobs to run in CI
-# pr-run-mode = "plan"
-# # Whether to install an updater program
-# install-updater = true
-# # The archive format to use for windows builds (defaults .zip)
-# windows-archive = ".tar.gz"
-# # The archive format to use for non-windows builds (defaults .tar.xz)
-# unix-archive = ".tar.gz"
-# # A namespace to use when publishing this package to the npm registry
-# npm-scope = "@auser"
-# docs-tool = "oranda"
-
-# github-repo = "auser/sealedinfra"
+[[workspace.metadata.dist.extra-artifacts]]
+artifacts = ["dist-manifest-schema.json"]
+build = [
+  "cargo",
+  "run",
+  "--release",
+  "--",
+  "dist",
+  "manifest-schema",
+  "--output=dist-manifest-schema.json",
+]
