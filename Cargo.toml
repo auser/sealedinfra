@@ -89,10 +89,6 @@ anyhow = "1.0.86"
 inherits = "release"
 lto = "thin"
 
-[dist]
-install-path = "~/.bin/sealedinfra"
-install-updater = true
-
 # Config for 'cargo dist'
 [workspace.metadata.dist]
 # The preferred cargo-dist version to use in CI (Cargo.toml SemVer syntax)
