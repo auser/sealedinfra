@@ -1,0 +1,6 @@
+[book]
+authors = ["Ari Lerner <me@ari.io>"]
+language = "en"
+multilingual = false
+src = "src"
+title = "sealed infrastructure"

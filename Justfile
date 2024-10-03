@@ -26,6 +26,9 @@ install-recommended: install-required
     @echo "Installing onefetch"
     cargo install onefetch
 
+    @echo "Installing oranda"
+    cargo install oranda
+
 # Build the base devcontainer
 devcontainer-build:
     docker build -t auser/sealedinfra-devcontainer -f .devcontainer/docker/Dockerfile.base .
@@ -42,5 +45,22 @@ migrate-up:
 migrate-down:
     @sqlx migrate revert
 
+# Reset the database
 migrate-reset:
     @sqlx database reset -y
+
+# Build the docs
+docs:
+    @oranda build
+
+# Serve the docs
+docs-dev:
+    @oranda dev
+
+# Run the tests
+test:
+    @cargo test
+
+# Run the tests with coverage
+test-coverage:
+    @cargo coverage
