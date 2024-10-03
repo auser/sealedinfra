@@ -1,0 +1,14 @@
+{
+  "project": {
+    "name": "SealedInfra"
+  },
+  "build": {
+    "dist_dir": "public",
+    "static_dir": "static"
+  },
+  "components": {
+    "mdbook": {
+      "path": "./docs"
+    }
+  }
+}
