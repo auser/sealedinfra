@@ -2,6 +2,7 @@
 name = "sealedinfra"
 version = "0.1.0"
 edition = "2021"
+homepage = "https://github.com/auser/sealedinfra"
 authors = ["Ari Lerner <me@ari.io>"]
 repository = "https://github.com/auser/sealedinfra"
 description = "Better infrastructure for better control and code"
@@ -93,7 +94,12 @@ cargo-dist-version = "0.17.0"
 # The installers to generate for each app
 installers = ["shell", "homebrew", "msi"]
 # Target platforms to build apps for (Rust target-triple syntax)
-targets = ["aarch64-apple-darwin", "x86_64-apple-darwin", "x86_64-unknown-linux-gnu", "x86_64-pc-windows-msvc"]
+targets = [
+  "aarch64-apple-darwin",
+  "x86_64-apple-darwin",
+  "x86_64-unknown-linux-gnu",
+  "x86_64-pc-windows-msvc",
+]
 # CI backends to support
 ci = "github"
 # Publish jobs to run in CI
