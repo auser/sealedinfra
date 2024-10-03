@@ -2,6 +2,15 @@
 name = "sealedinfra"
 version = "0.1.0"
 edition = "2021"
+authors = ["Ari Lerner <me@ari.io>"]
+repository = "https://github.com/auser/sealedinfra"
+description = "Better infrastructure for better control and code"
+
+[package.metadata.wix]
+upgrade-guid = "321692D7-6D7E-4DA8-9B83-C03D3969FFA6"
+path-guid = "FD648F90-07D7-4B9D-9823-AB9FFD19325D"
+license = false
+eula = false
 
 
 [dependencies]
@@ -30,7 +39,14 @@ serde = { version = "1.0.205", features = ["derive"] }
 serde_json = "1.0.128"
 serde_yaml = "0.9.34"
 sha1 = "0.10.6"
-sqlx = { version = "0.8.0", features = ["runtime-tokio-native-tls", "postgres", "chrono", "uuid", "runtime-async-std-native-tls", "sqlite"] }
+sqlx = { version = "0.8.0", features = [
+  "runtime-tokio-native-tls",
+  "postgres",
+  "chrono",
+  "uuid",
+  "runtime-async-std-native-tls",
+  "sqlite",
+] }
 tempfile = "3.12.0"
 thiserror = "1.0.63"
 tokio = { version = "1.39.2", features = ["full", "macros", "rt-multi-thread"] }
@@ -66,11 +82,21 @@ anyhow = "1.0.86"
 inherits = "release"
 lto = "thin"
 
+[dist]
+install-path = "~/.bin/sealedinfra"
+install-updater = true
+
 # Config for 'cargo dist'
 [workspace.metadata.dist]
 # The preferred cargo-dist version to use in CI (Cargo.toml SemVer syntax)
 cargo-dist-version = "0.17.0"
 # The installers to generate for each app
-installers = []
+installers = ["shell", "homebrew", "msi"]
 # Target platforms to build apps for (Rust target-triple syntax)
 targets = ["aarch64-apple-darwin", "x86_64-apple-darwin", "x86_64-unknown-linux-gnu", "x86_64-pc-windows-msvc"]
+# CI backends to support
+ci = "github"
+# Publish jobs to run in CI
+pr-run-mode = "plan"
+# Whether to install an updater program
+install-updater = true
