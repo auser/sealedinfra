@@ -1,0 +1,13 @@
+[package]
+
+name = "sealedinfra -- better infra"
+
+description = "Better infrastructure for better control and code"
+
+version = "0.1.0"
+
+license = "MIT"
+
+repository = "https://github.com/auser/sealedinfra.git"
+
+binaries = ["sealedinfra"]

@@ -32,6 +32,7 @@ pub struct CreateRepoRequest {
     pub owner: i32,
 }
 
+#[allow(unused)]
 pub async fn create_repo(db: &AppDatabase, repo: CreateRepoRequest) -> SealedResult<FpRepo> {
     let new_repo = sqlx::query_as::<_, FpRepo>(
         r#"INSERT INTO 
