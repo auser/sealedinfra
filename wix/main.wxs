@@ -123,9 +123,9 @@
                         <Component Id='binary0' Guid='*'>
                             <File
                                 Id='exe0'
-                                Name='sealedinfra.exe'
+                                Name='si.exe'
                                 DiskId='1'
-                                Source='$(var.CargoTargetBinDir)\sealedinfra.exe'
+                                Source='$(var.CargoTargetBinDir)\si.exe'
                                 KeyPath='yes'/>
                         </Component>
                     </Directory>
