@@ -38,6 +38,7 @@ kube = { version = "0.95", features = ["runtime", "derive", "client"] }
 log = { version = "0.4.22", features = ["serde"] }
 memmem = "0.1.1"
 num_cpus = "1.16.0"
+openssl = { version = "0.10.66", features = ["vendored"] }
 resolve-path = "0.1.0"
 schemars = { version = "0.8.21", features = ["uuid", "chrono"] }
 serde = { version = "1.0.205", features = ["derive"] }
@@ -64,6 +65,7 @@ utoipa = { version = "4.2.3", features = [
   "chrono",
 ] }
 utoipa-swagger-ui = { version = "7.1.0", features = ["axum"] }
+
 
 [dependencies.libsqlite3-sys]
 version = "0.28"
