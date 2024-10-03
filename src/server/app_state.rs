@@ -1,7 +1,5 @@
 use std::{sync::Arc, time::Duration};
 
-use sqlx::Pool;
-
 use crate::error::SealedResult;
 
 pub type SharedAppState = Arc<AppState>;
@@ -23,10 +21,9 @@ impl AppDatabase {
     }
 
     async fn run_migrations(&self) -> SealedResult<()> {
-        sqlx::migrate!("./migrations")
-            .run(&self.db)
-            .await
-            .expect("Failed to run migrations");
+        if let Err(e) = sqlx::migrate!("./migrations").run(&self.db).await {
+            tracing::error!("Failed to run migrations: {}", e);
+        };
 
         Ok(())
     }
@@ -40,6 +37,7 @@ impl AppState {
     pub async fn new() -> SealedResult<Self> {
         let db = {
             let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must set");
+            println!("DATABASE_URL: {}", database_url);
             let db = sqlx::postgres::PgPoolOptions::new()
                 .max_connections(10)
                 .acquire_timeout(Duration::from_secs(5))

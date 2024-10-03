@@ -2,8 +2,8 @@ use clap::Parser;
 
 use crate::{
     error::SealedResult,
-    server::{Server, ServerArgs},
-    settings::Settings,
+    server::Server,
+    settings::{ServerArgs, Settings},
 };
 
 #[derive(Parser, Debug, Clone)]

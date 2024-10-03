@@ -14,11 +14,11 @@ use super::api::{apps::AppsOpenApi, healthcheck::HealthCheckOpenApi};
 pub struct OpenApiDoc;
 
 pub fn routes(app_state: SharedAppState) -> Router<SharedAppState> {
-    // let swagger_ui = SwaggerUi::new("/swagger-ui").url("/openapi.json", doc);
+    let swagger_ui = SwaggerUi::new("/swagger-ui").url("/docs/openapi.json", OpenApiDoc::openapi());
 
     Router::new()
         .route("/openapi.json", get(openapi_json))
-        .merge(SwaggerUi::new("/swagger-ui").url("/docs/openapi.json", OpenApiDoc::openapi()))
+        .merge(swagger_ui)
         .with_state(app_state)
 }
 

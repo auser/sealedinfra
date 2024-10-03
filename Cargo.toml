@@ -30,12 +30,7 @@ serde = { version = "1.0.205", features = ["derive"] }
 serde_json = "1.0.128"
 serde_yaml = "0.9.34"
 sha1 = "0.10.6"
-sqlx = { version = "0.8.0", features = [
-  "runtime-tokio-native-tls",
-  "postgres",
-  "chrono",
-  "uuid",
-] }
+sqlx = { version = "0.8.0", features = ["runtime-tokio-native-tls", "postgres", "chrono", "uuid", "runtime-async-std-native-tls", "sqlite"] }
 tempfile = "3.12.0"
 thiserror = "1.0.63"
 tokio = { version = "1.39.2", features = ["full", "macros", "rt-multi-thread"] }
@@ -47,7 +42,6 @@ utoipa = { version = "4.2.3", features = [
   "openapi_extensions",
   "chrono",
 ] }
-utoipa-axum = { version = "0.1.0-beta.2" }
 utoipa-swagger-ui = { version = "7.1.0", features = ["axum"] }
 
 [dependencies.libsqlite3-sys]
@@ -58,7 +52,7 @@ features = ["bundled"]
 tempfile = "3.12.0"
 sqlx = { version = "0.8.0", features = [
   "runtime-tokio-native-tls",
-  "sqlite",
+  "postgres",
   "chrono",
   "uuid",
 ] }

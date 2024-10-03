@@ -1,3 +1,4 @@
+#![allow(unused)]
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, utoipa::ToSchema)]

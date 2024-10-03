@@ -10,8 +10,7 @@ mod cluster;
 mod docker_handler;
 mod info;
 pub(crate) mod sealedinfra;
-// #[cfg(feature = "server")]
-// mod serverinfra;
+mod serverinfra;
 mod terraform;
 
 #[derive(Debug, Parser)]
@@ -59,9 +58,8 @@ pub enum Command {
     SI(sealedinfra::SealedInfraArgs),
     #[command(about = "Handle docker generation", alias = "dh")]
     Docker(docker_handler::DockerHandlerArgs),
-    // #[command(about = "Manage server infrastructure")]
-    // #[cfg(feature = "server")]
-    // Server(serverinfra::ServerInitArgs),
+    #[command(about = "Manage server infrastructure")]
+    Server(serverinfra::ServerInitArgs),
 }
 
 pub async fn exec() -> SealedResult {
@@ -77,7 +75,7 @@ pub async fn exec() -> SealedResult {
         Command::SI(args) => sealedinfra::run(args, cfg).await?,
         Command::Docker(args) => docker_handler::run(args, cfg).await?,
         // #[cfg(feature = "server")]
-        // Command::Server(args) => serverinfra::run(args, &cfg).await?,
+        Command::Server(args) => serverinfra::run(args, cfg).await?,
     }
     Ok(())
 }

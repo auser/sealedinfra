@@ -42,11 +42,10 @@ pub fn get_config() -> SealedResult<&'static Settings> {
 }
 
 pub fn init_config(cli: &Cli) -> SealedResult<&'static Settings> {
-    let root = match &cli.settings {
-        None => PathBuf::from(&cli.root.clone().unwrap()),
-        Some(settings) => settings.clone(),
+    let settings = match &cli.settings {
+        None => Settings::from_root(cli.root.clone())?,
+        Some(settings) => Settings::from_root(Some(settings.clone()))?,
     };
-    let settings = Settings::from_root(Some(root))?;
     CONFIG_INSTANCE
         .set(settings)
         .expect("Config already initialized");
@@ -61,8 +60,11 @@ impl Settings {
 
         let run_mode = env::var("RUN_MODE").unwrap_or_else(|_| "development".to_string());
 
-        let s = config::Config::builder()
-            .add_source(File::from(root.as_path()))
+        let mut s = config::Config::builder();
+        if root.exists() && root.is_file() {
+            s = s.add_source(File::from(root.as_path()));
+        }
+        let s = s
             .add_source(File::with_name("config").required(false))
             .add_source(File::with_name("config/default").required(false))
             .add_source(File::with_name(&format!("config.{}", run_mode)).required(false))

@@ -32,7 +32,7 @@ devcontainer-build:
 
 # Run the server in dev mode
 dev:
-    @cargo watch -w src/server -w Cargo.toml -x "run --features server,postgres server start"
+    @cargo watch -w src/server -w Cargo.toml -x "run server start"
 
 # Run migrations
 migrate-up:
@@ -42,4 +42,5 @@ migrate-up:
 migrate-down:
     @sqlx migrate revert
 
-migrate-reset: migrate-down migrate-up
+migrate-reset:
+    @sqlx database reset -y

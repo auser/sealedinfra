@@ -84,6 +84,7 @@ RUN apt-get -y update -yq \
         libseccomp-dev \
         postgresql-contrib \
         postgresql-server-dev-15 \
+        cmake \
     # Clean up
     && apt-get autoremove -y \
     && apt-get clean -y \
