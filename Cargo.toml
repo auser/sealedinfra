@@ -36,6 +36,8 @@ hex = { version = "0.4.3", features = ["serde"] }
 k8s-openapi = { version = "0.23.0", features = ["v1_30"] }
 kube = { version = "0.95", features = ["runtime", "derive", "client"] }
 log = { version = "0.4.22", features = ["serde"] }
+mdbook-linkcheck = "0.7.7"
+mdbook-toc = "0.14.2"
 memmem = "0.1.1"
 num_cpus = "1.16.0"
 openssl = { version = "0.10.66", features = ["vendored"] }

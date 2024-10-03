@@ -1,10 +1,7 @@
 {
-  "build": {
-    "static_dir": "assets"
-  },
+  "build": {},
   "styles": {
-    "theme": "axolight",
-    "favicon": "./assets/favicon.ico"
+    "theme": "axolight"
   },
   "components": {
     "mdbook": {

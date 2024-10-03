@@ -16,8 +16,15 @@ To build the CLI, run the following command:
 cargo build --release
 ```
 
+Run from installed binary:
+
+```bash
+si --root $PWD --settings ./config/config.yaml docker --repo git@bitbucket.org:financialpayments/tupay.git -b origin/eol/upgrade  build
+```
+
 Or from source:
 
 ```bash
 RUST_LOG=debug cargo run -- --root $PWD --settings ./config/config.yaml docker --repo git@bitbucket.org:financialpayments/tupay.git -b origin/eol/upgrade  build
 ```
+
