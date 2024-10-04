@@ -55,9 +55,9 @@ pub enum Command {
     #[command(about = "Manage terraform", alias = "t")]
     Terraform(terraform::TerraformArgs),
     #[command(about = "Manage sealedinfra", alias = "sealedinfra")]
-    SI(sealedinfra::SealedInfraArgs),
+    SI(Box<sealedinfra::SealedInfraArgs>),
     #[command(about = "Handle docker generation", alias = "dh")]
-    Docker(docker_handler::DockerHandlerArgs),
+    Docker(Box<docker_handler::DockerHandlerArgs>),
     #[command(about = "Manage server infrastructure")]
     Server(serverinfra::ServerInitArgs),
 }
@@ -72,8 +72,8 @@ pub async fn exec() -> SealedResult {
         Command::Info(args) => info::run(args, cfg).await?,
         Command::Cluster(args) => cluster::run(args, cfg).await?,
         Command::Terraform(args) => terraform::run(args, cfg).await?,
-        Command::SI(args) => sealedinfra::run(args, cfg).await?,
-        Command::Docker(args) => docker_handler::run(args, cfg).await?,
+        Command::SI(args) => sealedinfra::run(*args, cfg).await?,
+        Command::Docker(args) => docker_handler::run(*args, cfg).await?,
         // #[cfg(feature = "server")]
         Command::Server(args) => serverinfra::run(args, cfg).await?,
     }

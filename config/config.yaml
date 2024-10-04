@@ -1,2 +1,6 @@
 working_directory: /tmp/fp
 ssh_key: ~/.ssh/herring_id_ed25519
+docker:
+  builder_name: "bob"
+  tags: 
+    - latest

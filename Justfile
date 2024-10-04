@@ -19,6 +19,10 @@ install-required:
     @echo "Installing sqlx"
     cargo install sqlx-cli
 
+    @echo "Installing oranda"
+    cargo install oranda
+
+
 # Install recommended tools
 install-recommended: install-required
     @echo "Installing gitoxide"
@@ -28,6 +32,12 @@ install-recommended: install-required
 
     @echo "Installing oranda"
     cargo install oranda
+
+    @echo "Installing mdbook"
+    cargo install mdbook
+
+    @echo "Installing mdbook-linkcheck"
+    cargo install mdbook-linkcheck
 
 # Build the base devcontainer
 devcontainer-build:

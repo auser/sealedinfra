@@ -1,25 +1,44 @@
 use crate::{
-    cmd::cli::docker_handler::{build::GitRepoService, docker_utils::build_docker_run_command},
+    cmd::cli::docker_handler::docker_utils::build_docker_build_command,
     error::{SealedError, SealedResult},
     settings::Settings,
 };
+use tokio::process::Command;
 
 use super::DockerHandlerArgs;
 
 pub async fn run(args: DockerHandlerArgs, config: &Settings) -> SealedResult<()> {
-    let repo = args.clone().repository;
-    if repo.is_none() {
-        return Err(SealedError::Runtime(anyhow::anyhow!(
-            "Repository is not set"
-        )));
-    }
-    let branch = args.branch.clone().unwrap_or("main".to_string());
-    let repo = GitRepoService::fetch(&repo.clone().unwrap(), &branch, config)?;
-
+    let mut args = args.merge_with_config()?;
+    args.validate()?;
+    let repo = args.with_repo(config)?;
     tracing::info!("Repository cloned: {}", repo.path().display());
 
-    let mut command = build_docker_run_command(args, &repo.path().to_path_buf(), config)?;
-    let output = command.output()?;
-    println!("{:?}", output);
-    Ok(())
+    let (cmd, env) = args.to_docker_buildx_command_string()?;
+
+    let mut command = Command::new("sh");
+    command.arg("-c").arg(cmd);
+
+    // Apply environment variables
+    for env_var in env.split_whitespace() {
+        let parts: Vec<&str> = env_var.splitn(2, '=').collect();
+        if parts.len() == 2 {
+            command.env(parts[0], parts[1]);
+        }
+    }
+
+    let output = command
+        .output()
+        .await
+        .map_err(|e| SealedError::Runtime(e.into()))?;
+
+    println!("stdout: {}", String::from_utf8_lossy(&output.stdout));
+    println!("stderr: {}", String::from_utf8_lossy(&output.stderr));
+
+    if output.status.success() {
+        Ok(())
+    } else {
+        Err(SealedError::Runtime(anyhow::anyhow!(
+            "Docker build command failed"
+        )))
+    }
 }
