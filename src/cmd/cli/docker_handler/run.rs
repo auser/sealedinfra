@@ -9,7 +9,6 @@ use super::DockerHandlerArgs;
 
 pub async fn run(args: DockerHandlerArgs, config: &Settings) -> SealedResult<()> {
     let mut args = args.merge_with_config()?;
-    args.validate()?;
     let repo = args.with_repo(config)?;
     tracing::info!("Repository cloned: {}", repo.path().display());
 

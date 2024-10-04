@@ -24,6 +24,8 @@ pub(crate) mod docker_utils;
 
 pub async fn run(args: DockerHandlerArgs, config: &Settings) -> SealedResult<()> {
     let docker_args = args.merge_with_config()?;
+    println!("HUH?");
+    println!("args: {:?}", docker_args);
     docker_args.validate()?;
 
     match docker_args.subcmd {

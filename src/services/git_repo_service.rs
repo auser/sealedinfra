@@ -66,6 +66,7 @@ impl GitRepoService {
 
         let path = Self::resolve_repo_local(repo, settings)?;
         make_dirs(path.as_path().parent().unwrap())?;
+        println!("path: {}", path.display());
         let repo = builder
             .clone(repo, path.as_path())
             .context("unable to clone git repository")?;
