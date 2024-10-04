@@ -14,6 +14,7 @@ use git2::Repository;
 use log::info;
 use serde::{Deserialize, Serialize};
 use serde_yaml::Value;
+use tokio::process::Command;
 
 mod build;
 // mod generate;
@@ -40,6 +41,9 @@ pub async fn run(args: DockerHandlerArgs, config: &Settings) -> SealedResult<()>
 
 #[derive(Debug, Parser, Serialize, Deserialize, Default, Clone)]
 pub struct DockerHandlerArgs {
+    #[arg(long, short)]
+    pub dry_run: bool,
+
     #[command(flatten)]
     pub docker: DockerCommandArgs,
 
@@ -65,6 +69,28 @@ pub enum SubCommand {
     Build,
     /// Run the docker run command
     Run,
+}
+
+impl DockerHandlerArgs {
+    pub fn build_command(&self) -> SealedResult<Command> {
+        let (command, _) = self.to_docker_buildx_command_string()?;
+        let mut cmd = Command::new("sh");
+        if let Some(ref current_dir) = self.docker.builder.current_dir {
+            cmd.current_dir(current_dir);
+        }
+        cmd.arg("-c").arg(command);
+        Ok(cmd)
+    }
+
+    pub fn run_command(&self) -> SealedResult<Command> {
+        let (command, _) = self.to_docker_run_command_string()?;
+        let mut cmd = Command::new("sh");
+        if let Some(ref current_dir) = self.docker.builder.current_dir {
+            cmd.current_dir(current_dir);
+        }
+        cmd.arg("-c").arg(command);
+        Ok(cmd)
+    }
 }
 
 impl DockerHandlerArgs {
@@ -112,16 +138,15 @@ impl DockerHandlerArgs {
         if let Some(ref memory_swap) = self.docker.builder.memory_swap {
             cmd_parts.extend_from_slice(&["--memory-swap", memory_swap]);
         }
+        if let Some(ref dockerfile) = self.docker.builder.dockerfile {
+            cmd_parts.extend_from_slice(&["--file", dockerfile]);
+        }
         if self.docker.builder.verbose {
             cmd_parts.push("--verbose");
         }
 
         for arg in &self.docker.builder.build_args {
             cmd_parts.extend_from_slice(&["--build-arg", arg]);
-        }
-
-        if let Some(ref dockerfile) = self.docker.builder.dockerfile {
-            cmd_parts.extend_from_slice(&["-f", dockerfile]);
         }
 
         let tag = format!(

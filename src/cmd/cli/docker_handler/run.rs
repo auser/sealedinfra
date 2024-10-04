@@ -13,7 +13,7 @@ pub async fn run(args: DockerHandlerArgs, config: &Settings) -> SealedResult<()>
     let repo = args.with_repo(config)?;
     tracing::info!("Repository cloned: {}", repo.path().display());
 
-    let (cmd, env) = args.to_docker_buildx_command_string()?;
+    let (cmd, env) = args.to_docker_run_command_string()?;
 
     let mut command = Command::new("sh");
     command.arg("-c").arg(cmd);
