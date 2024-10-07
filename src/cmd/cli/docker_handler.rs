@@ -1,19 +1,23 @@
 #![allow(unused)]
+use std::path::Path;
+
 use crate::{
     error::{SealedError, SealedResult},
     services::git_repo_service::GitRepoService,
     settings::Settings,
     util::{
         docker_helpers::{default_volumes, DockerBuilderOptions, DockerInstanceOption},
+        fs_utils::{expand_path, find_file_by_name},
         git_ops::parse_repo_name,
     },
 };
 use anyhow::Context;
 use clap::{Args, Parser};
 use git2::Repository;
-use log::info;
+use log::{debug, info};
 use serde::{Deserialize, Serialize};
 use serde_yaml::Value;
+use std::fs::canonicalize;
 use tokio::process::Command;
 
 mod build;
@@ -23,15 +27,14 @@ mod run;
 pub(crate) mod docker_utils;
 
 pub async fn run(args: DockerHandlerArgs, config: &Settings) -> SealedResult<()> {
-    let docker_args = args.merge_with_config()?;
-    println!("HUH?");
-    println!("args: {:?}", docker_args);
+    let mut docker_args = args.clone();
+    let (mut docker_args, config) = docker_args.merge_with_config(config)?;
     docker_args.validate()?;
 
-    match docker_args.subcmd {
+    match &docker_args.subcmd {
         // Some(SubCommand::Generate) => generate::run(docker_args, config).await,
-        Some(SubCommand::Build) => build::run(docker_args, config).await,
-        Some(SubCommand::Run) => run::run(docker_args, config).await,
+        Some(SubCommand::Build) => build::run(docker_args, &config).await,
+        Some(SubCommand::Run) => run::run(docker_args, &config).await,
         Some(_cmd) => Err(SealedError::Runtime(anyhow::anyhow!(
             "Unhandled command: for now",
         ))),
@@ -74,9 +77,17 @@ pub enum SubCommand {
 }
 
 impl DockerHandlerArgs {
-    pub fn build_command(&self) -> SealedResult<Command> {
-        let (command, _) = self.to_docker_buildx_command_string()?;
+    pub fn build_command(&self, config: &Settings) -> SealedResult<Command> {
+        let command = self.to_docker_buildx_command_string(config)?;
+        let env_prefix = self.get_env_prefix();
         let mut cmd = Command::new("sh");
+
+        for env_var in env_prefix.iter() {
+            let parts: Vec<&str> = env_var.splitn(2, '=').collect();
+            if parts.len() == 2 {
+                cmd.env(parts[0], parts[1]);
+            }
+        }
         if let Some(ref current_dir) = self.docker.builder.current_dir {
             cmd.current_dir(current_dir);
         }
@@ -84,10 +95,19 @@ impl DockerHandlerArgs {
         Ok(cmd)
     }
 
-    pub fn run_command(&self) -> SealedResult<Command> {
-        let (command, _) = self.to_docker_run_command_string()?;
+    pub fn run_command(&self, config: &Settings) -> SealedResult<Command> {
+        let command = self.to_docker_run_command_string(config)?;
+        let env_prefix = self.get_env_prefix();
         let mut cmd = Command::new("sh");
-        if let Some(ref current_dir) = self.docker.builder.current_dir {
+        for env_var in env_prefix.iter() {
+            let parts: Vec<&str> = env_var.splitn(2, '=').collect();
+            if parts.len() == 2 {
+                cmd.env(parts[0], parts[1]);
+            }
+        }
+        if let Some(ref repository) = self.docker.instance.docker_config.repository {
+            cmd.current_dir(repository);
+        } else if let Some(ref current_dir) = self.docker.builder.current_dir {
             cmd.current_dir(current_dir);
         }
         cmd.arg("-c").arg(command);
@@ -96,128 +116,66 @@ impl DockerHandlerArgs {
 }
 
 impl DockerHandlerArgs {
-    pub fn to_docker_buildx_command_string(&self) -> SealedResult<(String, String)> {
+    pub fn to_docker_buildx_command_string(&self, config: &Settings) -> SealedResult<String> {
         let repo_name = self.get_repo_name()?;
-        let mut cmd_parts = vec!["docker", "buildx", "build"];
-
-        // Add builder options
-        if let Some(ref builder_name) = self.docker.builder.builder_name {
-            cmd_parts.extend_from_slice(&["--builder", builder_name]);
-        }
-        if let Some(ref out_dir) = self.docker.builder.out_dir {
-            cmd_parts.extend_from_slice(&["--output", out_dir]);
-        }
-        if self.docker.builder.print_dockerfile {
-            cmd_parts.push("--print");
-        }
-        for tag in &self.docker.builder.tags {
-            cmd_parts.extend_from_slice(&["-t", tag]);
-        }
-        for label in &self.docker.builder.labels {
-            cmd_parts.extend_from_slice(&["--label", label]);
-        }
-        if self.docker.builder.quiet {
-            cmd_parts.push("--quiet");
-        }
-        if self.docker.builder.no_cache {
-            cmd_parts.push("--no-cache");
-        }
-        for platform in &self.docker.builder.platforms {
-            cmd_parts.extend_from_slice(&["--platform", platform]);
-        }
-        if let Some(ref cpu_quota) = self.docker.builder.cpu_quota {
-            cmd_parts.extend_from_slice(&["--cpu-quota", cpu_quota]);
-        }
-        if let Some(ref cpu_period) = self.docker.builder.cpu_period {
-            cmd_parts.extend_from_slice(&["--cpu-period", cpu_period]);
-        }
-        if let Some(ref cpu_share) = self.docker.builder.cpu_share {
-            cmd_parts.extend_from_slice(&["--cpu-shares", cpu_share]);
-        }
-        if let Some(ref memory) = self.docker.builder.memory {
-            cmd_parts.extend_from_slice(&["--memory", memory]);
-        }
-        if let Some(ref memory_swap) = self.docker.builder.memory_swap {
-            cmd_parts.extend_from_slice(&["--memory-swap", memory_swap]);
-        }
-        if let Some(ref dockerfile) = self.docker.builder.dockerfile {
-            cmd_parts.extend_from_slice(&["--file", dockerfile]);
-        }
-        if self.docker.builder.verbose {
-            cmd_parts.push("--verbose");
-        }
-
-        for arg in &self.docker.builder.build_args {
-            cmd_parts.extend_from_slice(&["--build-arg", arg]);
-        }
-
-        let tag = format!(
-            "{}:{}",
-            repo_name,
-            self.docker
-                .instance
-                .docker_config
-                .tag
-                .clone()
-                .unwrap_or_else(|| "latest".to_string())
-        );
-        cmd_parts.extend_from_slice(&["-t", &tag]);
+        let mut cmd_parts: Vec<String> = vec![
+            "docker".to_string(),
+            "buildx".to_string(),
+            "build".to_string(),
+        ];
 
         // Add the build context (current directory)
         let in_dir = self.docker.builder.current_dir.as_deref().unwrap_or(".");
-        cmd_parts.push(in_dir);
 
-        let mut env_prefix = String::new();
-        if let Some(ref host) = self.docker.builder.docker_host {
-            env_prefix.push_str(&format!(
-                "DOCKER_HOST={} ",
-                shell_escape::escape(host.into())
-            ));
+        // Add builder options
+        if let Some(ref builder_name) = self.docker.builder.builder_name {
+            cmd_parts.extend_from_slice(&["--builder".to_string(), builder_name.to_string()]);
         }
-        if let Some(ref tls_verify) = self.docker.builder.docker_tls_verify {
-            env_prefix.push_str(&format!(
-                "DOCKER_TLS_VERIFY={} ",
-                shell_escape::escape(tls_verify.into())
-            ));
+        if let Some(ref out_dir) = self.docker.builder.out_dir {
+            cmd_parts.extend_from_slice(&["--output".to_string(), out_dir.to_string()]);
         }
-        if let Some(ref cert_path) = self.docker.builder.docker_cert_path {
-            env_prefix.push_str(&format!(
-                "DOCKER_CERT_PATH={} ",
-                shell_escape::escape(cert_path.into())
-            ));
+        if self.docker.builder.print_dockerfile {
+            cmd_parts.push("--print".to_string());
         }
-
-        let cmd_string = cmd_parts
-            .into_iter()
-            .map(|s| shell_escape::escape(s.into()))
-            .collect::<Vec<_>>()
-            .join(" ");
-
-        Ok((cmd_string, env_prefix))
-    }
-
-    pub fn to_docker_run_command_string(&self) -> SealedResult<(String, String)> {
-        let repo_name = self.get_repo_name()?;
-        let mut cmd_parts = vec!["docker", "run"];
-
-        if self.docker.instance.rm {
-            cmd_parts.push("--rm");
+        for tag in &self.docker.builder.tags {
+            cmd_parts.extend_from_slice(&["-t".to_string(), tag.to_string()]);
         }
-
-        for volume in &self.docker.instance.volumes {
-            cmd_parts.extend_from_slice(&["-v", volume]);
+        for label in &self.docker.builder.labels {
+            cmd_parts.extend_from_slice(&["--label".to_string(), label.to_string()]);
         }
-
-        for env_var in &self.docker.instance.env {
-            cmd_parts.extend_from_slice(&["-e", env_var]);
+        if self.docker.builder.quiet {
+            cmd_parts.push("--quiet".to_string());
         }
-
-        if let Some(ref name) = self.docker.instance.name {
-            cmd_parts.extend_from_slice(&["--name", name]);
+        if self.docker.builder.no_cache {
+            cmd_parts.push("--no-cache".to_string());
+        }
+        for platform in &self.docker.builder.platforms {
+            cmd_parts.extend_from_slice(&["--platform".to_string(), platform.to_string()]);
+        }
+        if let Some(ref cpu_quota) = self.docker.builder.cpu_quota {
+            cmd_parts.extend_from_slice(&["--cpu-quota".to_string(), cpu_quota.to_string()]);
+        }
+        if let Some(ref cpu_period) = self.docker.builder.cpu_period {
+            cmd_parts.extend_from_slice(&["--cpu-period".to_string(), cpu_period.to_string()]);
+        }
+        if let Some(ref cpu_share) = self.docker.builder.cpu_share {
+            cmd_parts.extend_from_slice(&["--cpu-shares".to_string(), cpu_share.to_string()]);
+        }
+        if let Some(ref memory) = self.docker.builder.memory {
+            cmd_parts.extend_from_slice(&["--memory".to_string(), memory.to_string()]);
+        }
+        if let Some(ref memory_swap) = self.docker.builder.memory_swap {
+            cmd_parts.extend_from_slice(&["--memory-swap".to_string(), memory_swap.to_string()]);
+        }
+        if let Some(ref dockerfile) = self.docker.builder.dockerfile {
+            cmd_parts.extend_from_slice(&["--file".to_string(), dockerfile.to_string()]);
+        }
+        if self.docker.builder.verbose {
+            cmd_parts.push("--verbose".to_string());
         }
 
-        if let Some(ref user) = self.docker.instance.user {
-            cmd_parts.extend_from_slice(&["-u", user]);
+        for arg in &self.docker.builder.build_args {
+            cmd_parts.extend_from_slice(&["--build-arg".to_string(), arg.to_string()]);
         }
 
         let tag = format!(
@@ -230,29 +188,61 @@ impl DockerHandlerArgs {
                 .clone()
                 .unwrap_or_else(|| "latest".to_string())
         );
-        cmd_parts.push(&tag);
+        cmd_parts.extend_from_slice(&["-t".to_string(), tag.to_string()]);
 
-        cmd_parts.extend(self.docker.instance.commands.iter().map(|s| s.as_str()));
-
-        let mut env_prefix = String::new();
-        if let Some(ref host) = self.docker.builder.docker_host {
-            env_prefix.push_str(&format!(
-                "DOCKER_HOST={} ",
-                shell_escape::escape(host.into())
-            ));
+        match &self.docker.builder.dockerfile {
+            Some(dockerfile) => {
+                cmd_parts.extend_from_slice(&["-f".to_string(), dockerfile.to_string()]);
+            }
+            None => {
+                if let Ok(found_dockerfile) = find_file_by_name(Path::new(in_dir), "Dockerfile") {
+                    if let Some(path_str) = found_dockerfile.to_str() {
+                        let dockerfile_path = path_str.to_owned();
+                        let dockerfile_path = expand_path(Path::new(&dockerfile_path));
+                        cmd_parts.extend_from_slice(&[
+                            "-f".to_string(),
+                            format!("{}", dockerfile_path.to_string_lossy()),
+                        ]);
+                    }
+                }
+            }
         }
+
+        if let Some(ref secrets) = self.docker.instance.secrets {
+            for secret in secrets {
+                cmd_parts.extend_from_slice(&["--secret".to_string(), secret.to_string()]);
+            }
+        }
+        if let Some(ref host_key) = config.ssh_key {
+            // --secret id=ssh_priv_key,src=$HOME/.ssh/herring_id_ed25519
+            let host_key = expand_path(host_key.as_path());
+            cmd_parts.extend_from_slice(&[
+                "--secret".to_string(),
+                format!("id=ssh_priv_key,src={}", host_key.display()),
+            ]);
+        }
+
+        let mut env_prefix: Vec<String> = Vec::new();
+
+        if let Some(ref host) = self.docker.builder.docker_host {
+            env_prefix.push(format!("DOCKER_HOST={}", shell_escape::escape(host.into())));
+        }
+
         if let Some(ref tls_verify) = self.docker.builder.docker_tls_verify {
-            env_prefix.push_str(&format!(
-                "DOCKER_TLS_VERIFY={} ",
+            env_prefix.push(format!(
+                "DOCKER_TLS_VERIFY={}",
                 shell_escape::escape(tls_verify.into())
             ));
         }
+
         if let Some(ref cert_path) = self.docker.builder.docker_cert_path {
-            env_prefix.push_str(&format!(
-                "DOCKER_CERT_PATH={} ",
+            env_prefix.push(format!(
+                "DOCKER_CERT_PATH={}",
                 shell_escape::escape(cert_path.into())
             ));
         }
+
+        cmd_parts.push(in_dir.to_string());
 
         let cmd_string = cmd_parts
             .into_iter()
@@ -260,12 +250,82 @@ impl DockerHandlerArgs {
             .collect::<Vec<_>>()
             .join(" ");
 
-        Ok((cmd_string, env_prefix))
+        Ok(cmd_string)
+    }
+
+    pub fn to_docker_run_command_string(&self, config: &Settings) -> SealedResult<String> {
+        let repo_name = self.get_repo_name()?;
+        let mut cmd_parts = vec!["docker".to_string(), "run".to_string()];
+
+        if self.docker.instance.rm {
+            cmd_parts.push("--rm".to_string());
+        }
+
+        for volume in &self.docker.instance.volumes {
+            cmd_parts.extend_from_slice(&["-v".to_string(), volume.to_string()]);
+        }
+
+        for env_var in &self.docker.instance.env {
+            cmd_parts.extend_from_slice(&["-e".to_string(), env_var.to_string()]);
+        }
+
+        if let Some(ref name) = self.docker.instance.name {
+            cmd_parts.extend_from_slice(&["--name".to_string(), name.to_string()]);
+        }
+
+        if let Some(ref user) = self.docker.instance.user {
+            cmd_parts.extend_from_slice(&["-u".to_string(), user.to_string()]);
+        }
+
+        let tag = format!(
+            "{}:{}",
+            repo_name,
+            self.docker
+                .instance
+                .docker_config
+                .tag
+                .clone()
+                .unwrap_or_else(|| "latest".to_string())
+        );
+        cmd_parts.push(tag.to_string());
+
+        cmd_parts.extend(self.docker.instance.commands.iter().map(|s| s.to_string()));
+
+        let cmd_string = cmd_parts
+            .into_iter()
+            .map(|s| shell_escape::escape(s.into()))
+            .collect::<Vec<_>>()
+            .join(" ");
+
+        Ok(cmd_string)
+    }
+
+    pub fn get_env_prefix(&self) -> Vec<String> {
+        let mut env_prefix: Vec<String> = Vec::new();
+
+        if let Some(ref host) = self.docker.builder.docker_host {
+            env_prefix.push(format!("DOCKER_HOST={}", shell_escape::escape(host.into())));
+        }
+
+        if let Some(ref tls_verify) = self.docker.builder.docker_tls_verify {
+            env_prefix.push(format!(
+                "DOCKER_TLS_VERIFY={}",
+                shell_escape::escape(tls_verify.into())
+            ));
+        }
+
+        if let Some(ref cert_path) = self.docker.builder.docker_cert_path {
+            env_prefix.push(format!(
+                "DOCKER_CERT_PATH={}",
+                shell_escape::escape(cert_path.into())
+            ));
+        }
+        env_prefix
     }
 }
 
 impl DockerHandlerArgs {
-    pub fn validate(&self) -> Result<(), SealedError> {
+    pub fn validate(&mut self) -> Result<(), SealedError> {
         let repo = self.docker.instance.docker_config.repository.clone();
         let branch = self.docker.instance.docker_config.branch.clone();
         let tag = self.docker.instance.docker_config.tag.clone();
@@ -275,6 +335,20 @@ impl DockerHandlerArgs {
             return Err(SealedError::Runtime(anyhow::anyhow!(
                 "No repository or image specified"
             )));
+        }
+
+        if self.docker.instance.docker_config.repository.is_some() {
+            let repo_as_path = self
+                .docker
+                .instance
+                .docker_config
+                .repository
+                .clone()
+                .unwrap();
+            if Path::new(&repo_as_path).exists() {
+                debug!("Repository path: {}", repo_as_path.clone());
+                self.docker.builder.current_dir = Some(repo_as_path);
+            }
         }
         Ok(())
     }
@@ -292,18 +366,21 @@ impl DockerHandlerArgs {
             panic!("No repository or image specified");
         }
     }
-    pub fn merge_with_config(mut self) -> anyhow::Result<Self> {
+    pub fn merge_with_config(&mut self, config: &Settings) -> SealedResult<(&mut Self, Settings)> {
+        let mut config = config.clone();
         if let Some(config_file) = &self.docker.instance.config_file {
-            let config =
+            let config_str =
                 std::fs::read_to_string(config_file).context("Failed to read config file")?;
-            let config: Value =
-                serde_yaml::from_str(&config).context("Failed to parse config file")?;
+            let mut cfg: Value =
+                serde_yaml::from_str(&config_str).context("Failed to parse config file")?;
 
-            self.docker.instance = merge_instance(self.docker.instance, &config);
-            self.docker.builder = merge_builder(self.docker.builder, &config);
+            config = merge_config(config, &cfg);
+
+            self.docker.instance = merge_instance(self.docker.instance.clone(), &cfg);
+            self.docker.builder = merge_builder(self.docker.builder.clone(), &cfg);
         }
 
-        Ok(self)
+        Ok((self, config))
     }
 
     pub fn with_repo(&mut self, config: &Settings) -> SealedResult<Repository> {
@@ -408,4 +485,14 @@ fn get_str_sequence(config: &serde_yaml::Mapping, key: &str) -> Option<Vec<Strin
 
 fn get_bool_value(config: &serde_yaml::Mapping, key: &str) -> Option<bool> {
     config.get(key).and_then(|v| v.as_bool())
+}
+
+fn merge_config(mut config: Settings, other: &Value) -> Settings {
+    if let Some(ssh_key) = other.get("ssh_key") {
+        config.ssh_key = Some(ssh_key.as_str().unwrap().to_string().into());
+    }
+    if let Some(working_directory) = other.get("working_directory") {
+        config.working_directory = working_directory.as_str().unwrap().to_string().into();
+    }
+    config
 }

@@ -1,0 +1,10 @@
+working_directory: /tmp/local
+ssh_key: ~/.ssh/my_id_ed25519
+docker_config:
+  repository: git@github.com/auser/dotfiles
+  branch: origin/some_branch
+docker:
+  builder:
+    dockerfile: .devcontainer/Dockerfile
+    tags: 
+      - latest

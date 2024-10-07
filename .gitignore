@@ -3,3 +3,5 @@
 terraform/.terraform
 .db
 public/
+config/builder/config.*
+!config/builder/config.example.yaml

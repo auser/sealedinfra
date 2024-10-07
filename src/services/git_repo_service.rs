@@ -27,46 +27,11 @@ impl GitRepoService {
         Ok(repo)
     }
 
-    // Checkout a branch and set it as the current branch
-    fn checkout_branch(
-        repo: &Repository,
-        branch_name: &str,
-        _settings: &Settings,
-    ) -> SealedResult<()> {
-        let branch = match repo.find_branch(branch_name, BranchType::Remote) {
-            Ok(branch) => branch,
-            Err(e) => {
-                tracing::error!("Error finding branch: {}", e);
-                match repo.find_branch(branch_name, BranchType::Local) {
-                    Ok(branch) => branch,
-                    Err(e) => {
-                        tracing::error!("Error finding branch: {}", e);
-                        return Err(SealedError::Git2OperationFailed(e));
-                    }
-                }
-            }
-        };
-        let current_branch = GitRepoService::current_branch(repo)?;
-        if !current_branch.contains(branch_name) {
-            let commit = branch.get().peel_to_commit()?;
-            repo.branch(branch_name, &commit, true)?;
-            let obj = repo.revparse_single(&("refs/heads/".to_owned() + branch_name))?;
-            repo.set_head(&("refs/heads/".to_owned() + branch_name))?;
-            let mut checkout_builder = git2::build::CheckoutBuilder::new();
-            checkout_builder.force();
-            repo.checkout_tree(&obj, Some(&mut checkout_builder))?;
-            info!("Checked out branch: {}", branch_name);
-        }
-
-        Ok(())
-    }
-
     fn clone_from_remote(repo: &str, settings: &Settings) -> SealedResult<Repository> {
         let mut builder = Self::get_repo_builder(settings)?;
 
         let path = Self::resolve_repo_local(repo, settings)?;
-        make_dirs(path.as_path().parent().unwrap())?;
-        println!("path: {}", path.display());
+        make_dirs(path.as_path())?;
         let repo = builder
             .clone(repo, path.as_path())
             .context("unable to clone git repository")?;
@@ -103,53 +68,137 @@ impl GitRepoService {
         Ok(builder)
     }
 
+    // Checkout a branch and set it as the current branch
+    fn checkout_branch(
+        repo: &Repository,
+        branch_name: &str,
+        _settings: &Settings,
+    ) -> SealedResult<()> {
+        let remote_name = "origin";
+        let remote_branch_name = format!("{}/{}", remote_name, branch_name);
+
+        info!("Checking out branch: {}", branch_name);
+
+        // Try to find the branch locally or remotely
+        let _branch = match repo.find_branch(branch_name, BranchType::Local) {
+            Ok(branch) => branch,
+            Err(_) => match repo.find_branch(&remote_branch_name, BranchType::Remote) {
+                Ok(branch) => branch,
+                Err(_) => {
+                    // Branch doesn't exist locally or remotely, create it
+                    tracing::info!("Branch '{}' not found. Creating it.", branch_name);
+                    let head = repo.head()?;
+                    let head_commit = head.peel_to_commit()?;
+                    repo.branch(branch_name, &head_commit, false)?;
+                    repo.find_branch(branch_name, BranchType::Local)?
+                }
+            },
+        };
+
+        let current_branch = GitRepoService::current_branch(repo)?;
+        if !current_branch.contains(branch_name) {
+            let obj = repo.revparse_single(&("refs/heads/".to_owned() + branch_name))?;
+            repo.set_head(&("refs/heads/".to_owned() + branch_name))?;
+            let mut checkout_builder = git2::build::CheckoutBuilder::new();
+            checkout_builder.force();
+            repo.checkout_tree(&obj, Some(&mut checkout_builder))?;
+            info!("Checked out branch: {}", branch_name);
+        }
+
+        Ok(())
+    }
+
     pub fn update_from_remote(
         repo: &Repository,
         branch_name: &str,
         settings: &Settings,
     ) -> SealedResult<()> {
         let remote_name = "origin";
-
         let mut fo = Self::get_fetch_options(settings)?;
 
-        // Create fetch options
-        info!("Fetching latest changes from remote: {}", remote_name);
-        // Fetch the latest changes from the remote
-        repo.find_remote(remote_name)?
-            .fetch(&[branch_name], Some(&mut fo), None)?;
+        // Remove 'origin/' prefix if it exists in the branch_name
+        let clean_branch_name = branch_name.strip_prefix("origin/").unwrap_or(branch_name);
+
+        info!(
+            "Fetching latest changes for branch '{}' from remote: {}",
+            clean_branch_name, remote_name
+        );
+
+        // Fetch the latest changes from the remote for all branches
+        repo.find_remote(remote_name)?.fetch(
+            &["refs/heads/*:refs/remotes/origin/*"],
+            Some(&mut fo),
+            None,
+        )?;
 
         info!("Fetching complete");
 
         // Get the remote branch reference
-        let fetch_head = repo.find_reference("HEAD")?;
-        let fetch_commit = repo.reference_to_annotated_commit(&fetch_head)?;
+        let remote_ref_name = format!("refs/remotes/{}/{}", remote_name, clean_branch_name);
+        let remote_ref = match repo.find_reference(&remote_ref_name) {
+            Ok(r) => r,
+            Err(_) => {
+                tracing::warn!(
+                    "Remote branch '{}' not found. It might be a new branch.",
+                    clean_branch_name
+                );
+                // Create a new branch based on the current HEAD
+                let head = repo.head()?;
+                let head_commit = head.peel_to_commit()?;
+                repo.branch(clean_branch_name, &head_commit, false)?;
+                repo.find_reference(&format!("refs/heads/{}", clean_branch_name))?
+            }
+        };
+        let remote_commit = repo.reference_to_annotated_commit(&remote_ref)?;
 
-        info!("Fetch the remote commit: {}", fetch_commit.id());
-        // Get the local branch reference
-        let local_branch = repo.find_branch(branch_name, BranchType::Remote)?;
-        let local_branch_ref = local_branch.get();
-        let local_commit = repo.reference_to_annotated_commit(local_branch_ref)?;
+        info!("Using commit: {}", remote_commit.id());
 
-        info!("Get the local commit: {}", local_commit.id());
+        // Get or create the local branch reference
+        let local_ref_name = format!("refs/heads/{}", clean_branch_name);
+        let mut local_ref = match repo.find_reference(&local_ref_name) {
+            Ok(r) => r,
+            Err(_) => {
+                // If local branch doesn't exist, create it
+                repo.reference(
+                    &local_ref_name,
+                    remote_commit.id(),
+                    true,
+                    &format!("Create local branch {}", clean_branch_name),
+                )?
+            }
+        };
+        let local_commit = repo.reference_to_annotated_commit(&local_ref)?;
+
+        info!("Local commit: {}", local_commit.id());
+
         // Perform merge analysis
-        let analysis = repo.merge_analysis(&[&fetch_commit])?;
+        let analysis = repo.merge_analysis(&[&remote_commit])?;
 
         if analysis.0.is_up_to_date() {
             tracing::info!("Already up to date");
         } else if analysis.0.is_fast_forward() {
             // Fast-forward
-            let refname = format!("refs/heads/{}", branch_name);
-            let mut reference = repo.find_reference(&refname)?;
-            reference.set_target(fetch_commit.id(), "Fast-Forward")?;
-            repo.set_head(&refname)?;
+            local_ref.set_target(
+                remote_commit.id(),
+                &format!(
+                    "Fast-Forward {} to {}",
+                    clean_branch_name,
+                    remote_commit.id()
+                ),
+            )?;
+            repo.set_head(&local_ref_name)?;
             repo.checkout_head(Some(git2::build::CheckoutBuilder::default().force()))?;
-            tracing::info!("Fast-forwarded to {}", fetch_commit.id());
+            tracing::info!(
+                "Fast-forwarded {} to {}",
+                clean_branch_name,
+                remote_commit.id()
+            );
         } else {
             // Normal merge
             let local_tree = repo.find_commit(local_commit.id())?.tree()?;
-            let remote_tree = repo.find_commit(fetch_commit.id())?.tree()?;
+            let remote_tree = repo.find_commit(remote_commit.id())?.tree()?;
             let ancestor =
-                repo.find_commit(repo.merge_base(local_commit.id(), fetch_commit.id())?)?;
+                repo.find_commit(repo.merge_base(local_commit.id(), remote_commit.id())?)?;
             let mut idx = repo.merge_trees(&ancestor.tree()?, &local_tree, &remote_tree, None)?;
 
             if idx.has_conflicts() {
@@ -161,11 +210,11 @@ impl GitRepoService {
             }
 
             let result_tree = repo.find_tree(idx.write_tree_to(repo)?)?;
-            let message = format!("Merge {} into {}", fetch_commit.id(), branch_name);
+            let message = format!("Merge {} into {}", remote_commit.id(), clean_branch_name);
             let sig = repo.signature()?;
             let local_commit = repo.find_commit(local_commit.id())?;
-            let remote_commit = repo.find_commit(fetch_commit.id())?;
-            let _merge_commit = repo.commit(
+            let remote_commit = repo.find_commit(remote_commit.id())?;
+            let merge_commit = repo.commit(
                 Some("HEAD"),
                 &sig,
                 &sig,
@@ -174,8 +223,14 @@ impl GitRepoService {
                 &[&local_commit, &remote_commit],
             )?;
 
+            // Move the branch reference to the new commit
+            local_ref.set_target(
+                merge_commit,
+                &format!("Merge {} into {}", remote_commit.id(), clean_branch_name),
+            )?;
+            repo.set_head(&local_ref_name)?;
             repo.checkout_head(Some(git2::build::CheckoutBuilder::default().force()))?;
-            tracing::info!("Merged {} into {}", fetch_commit.id(), branch_name);
+            tracing::info!("Merged {} into {}", remote_commit.id(), clean_branch_name);
         }
 
         Ok(())
@@ -216,7 +271,8 @@ impl GitRepoService {
 
     fn has_repo_been_cloned(repo: &str, settings: &Settings) -> SealedResult<bool> {
         let path = Self::resolve_repo_local(repo, settings)?;
-        Ok(path.exists())
+        let dot_git_path = path.join(".git");
+        Ok(dot_git_path.exists() && dot_git_path.is_dir())
     }
 
     fn resolve_repo_local(repo: &str, settings: &Settings) -> SealedResult<PathBuf> {

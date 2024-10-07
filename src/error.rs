@@ -26,7 +26,12 @@ pub enum SealedError {
     GitUrlParseError(#[from] git_url_parse::GitUrlParseError),
     #[error("File not found: {0}")]
     FileNotFound(String),
-
+    #[error("Interrupted")]
+    Interrupted,
+    #[error("Failed to run command: {0} {1:?}")]
+    FailedToRunUserCommand(String, Option<Box<dyn std::error::Error>>),
+    #[error("System error: {0} {1:?}")]
+    System(String, Option<Box<dyn std::error::Error>>),
     /// Any error originating from the `kube-rs` crate
     #[error("Kubernetes reported error: {source}")]
     Kube {

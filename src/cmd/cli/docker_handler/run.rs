@@ -7,18 +7,19 @@ use tokio::process::Command;
 
 use super::DockerHandlerArgs;
 
-pub async fn run(args: DockerHandlerArgs, config: &Settings) -> SealedResult<()> {
-    let mut args = args.merge_with_config()?;
+pub async fn run(args: &mut DockerHandlerArgs, config: &Settings) -> SealedResult<()> {
     let repo = args.with_repo(config)?;
     tracing::info!("Repository cloned: {}", repo.path().display());
 
-    let (cmd, env) = args.to_docker_run_command_string()?;
+    let cmd = args.to_docker_run_command_string(config)?;
 
     let mut command = Command::new("sh");
     command.arg("-c").arg(cmd);
 
+    let env = args.get_env_prefix();
+
     // Apply environment variables
-    for env_var in env.split_whitespace() {
+    for env_var in env.iter() {
         let parts: Vec<&str> = env_var.splitn(2, '=').collect();
         if parts.len() == 2 {
             command.env(parts[0], parts[1]);

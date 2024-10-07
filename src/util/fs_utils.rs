@@ -19,6 +19,54 @@ pub fn find_multiple_files_by_name(path: &Path, filenames: &[&str]) -> SealedRes
     find_multiple_files_by_name_recursive(path, filenames)
 }
 
+pub fn expand_path<P: AsRef<Path>>(path: P) -> PathBuf {
+    let path_ref = path.as_ref();
+    let mut path_buf = PathBuf::new();
+
+    for component in path_ref.components() {
+        match component {
+            std::path::Component::Normal(os_str) => {
+                let segment = os_str.to_str().unwrap_or("");
+                if segment.starts_with('$') {
+                    // Handle environment variables
+                    if let Some(var_name) = segment.strip_prefix('$') {
+                        if let Ok(var_value) = std::env::var(var_name) {
+                            path_buf.push(var_value);
+                        } else {
+                            path_buf.push(segment);
+                        }
+                    }
+                } else {
+                    path_buf.push(segment);
+                }
+            }
+            std::path::Component::RootDir => path_buf.push("/"),
+            std::path::Component::CurDir => {} // Skip '.'
+            std::path::Component::ParentDir => {
+                // Handle '..'
+                path_buf.pop();
+            }
+            std::path::Component::Prefix(prefix) => path_buf.push(prefix.as_os_str()),
+        }
+    }
+
+    // Handle '~' for home directory
+    if path_buf.starts_with("~") {
+        if let Some(home_dir) = dirs::home_dir() {
+            let mut new_path = PathBuf::new();
+            new_path.push(home_dir);
+            new_path.push(path_buf.strip_prefix("~").unwrap());
+            path_buf = new_path;
+        }
+    }
+
+    // Canonicalize the path to resolve any remaining '..' or '.'
+    match path_buf.canonicalize() {
+        Ok(canonical_path) => canonical_path,
+        Err(_) => path_buf, // If canonicalization fails, return the original path
+    }
+}
+
 fn find_file_by_name_recursive(root: &Path, filename: &str) -> SealedResult<PathBuf> {
     for entry in std::fs::read_dir(root)? {
         let entry = entry?;
@@ -113,6 +161,26 @@ mod tests {
         }
 
         Ok(temp_root_path)
+    }
+
+    fn test_expand_path() {
+        let paths = vec![
+            ("~/.ssh/id_rsa", "/Users/auser/.ssh/id_rsa"),
+            ("$HOME/.ssh/id_rsa", "/Users/auser/.ssh/id_rsa"),
+            ("$HOME/Documents/../Downloads", "/Users/auser/Downloads"),
+            ("~/../some/relative/path", "/some/relative/path"),
+            ("/absolute/path", "/absolute/path"),
+            ("~/Documents/../Downloads", "/Users/auser/Downloads"),
+        ];
+
+        for (input_path, expected_path) in paths {
+            println!("Original: {}", input_path);
+            println!("Expanded: {:?}\n", expand_path(input_path));
+            assert_eq!(
+                expected_path,
+                expand_path(input_path).as_path().to_str().unwrap()
+            );
+        }
     }
 
     fn initialize_test_git_repo(path: &Path) -> SealedResult<()> {

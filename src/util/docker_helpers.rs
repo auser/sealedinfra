@@ -118,6 +118,9 @@ pub struct DockerInstanceOption {
     #[arg(long, short = 'c')]
     pub commands: Vec<String>,
 
+    #[arg(long, short = 's')]
+    pub secrets: Option<Vec<String>>,
+
     #[command(flatten)]
     pub docker_config: DockerSpecificArgs,
 }
@@ -138,6 +141,7 @@ impl Default for DockerInstanceOption {
             user: None,
             commands: vec![],
             docker_config: DockerSpecificArgs::default(),
+            secrets: None,
         }
     }
 }
