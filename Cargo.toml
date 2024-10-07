@@ -71,7 +71,7 @@ utoipa-swagger-ui = { version = "7.1.0", features = ["axum"] }
 
 
 [dependencies.libsqlite3-sys]
-version = "0.28"
+version = "0.30"
 features = ["bundled"]
 
 [dev-dependencies]
@@ -101,7 +101,7 @@ publish = false
 # Config for 'cargo dist'
 [workspace.metadata.dist]
 # The preferred cargo-dist version to use in CI (Cargo.toml SemVer syntax)
-cargo-dist-version = "0.17.0"
+cargo-dist-version = "0.22.1"
 # CI backends to support
 ci = "github"
 # The installers to generate for each app
@@ -117,7 +117,7 @@ targets = [
   "x86_64-unknown-linux-gnu",
   "x86_64-pc-windows-msvc",
 ]
-# Publish jobs to run in CI
+# Which actions to run on pull requests
 pr-run-mode = "plan"
 # The archive format to use for windows builds (defaults .zip)
 windows-archive = ".tar.gz"

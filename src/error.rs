@@ -24,6 +24,8 @@ pub enum SealedError {
     Git2OperationFailed(#[from] git2::Error),
     #[error("Git url parse error: {0}")]
     GitUrlParseError(#[from] git_url_parse::GitUrlParseError),
+    #[error("File not found: {0}")]
+    FileNotFound(String),
 
     /// Any error originating from the `kube-rs` crate
     #[error("Kubernetes reported error: {source}")]
