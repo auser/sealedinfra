@@ -1,0 +1,31 @@
+[package]
+name = "sealed-operator"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "si-operator"
+path = "src/main.rs"
+
+[dependencies]
+sealed-common = { workspace = true }
+
+k8s-openapi = { workspace = true }
+kube = { workspace = true, features = ["runtime", "derive", "client"] }
+
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+
+serde = { workspace = true }
+serde_yaml = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+tokio = { workspace = true }
+async-recursion = { workspace = true }
+schemars = { version = "0.8.21", features = ["uuid", "chrono"] }
+
+futures = { workspace = true }
+
+[build-dependencies]
+vergen-gitcl = { version = "1", features = ["build", "cargo", "rustc"] }
+anyhow = { workspace = true }

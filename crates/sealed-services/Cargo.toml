@@ -1,0 +1,25 @@
+[package]
+name = "sealed-services"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+sealed-common = { path = "../sealed-common" }
+sealed-database = { path = "../sealed-database" }
+sealed-ui = { path = "../sealed-ui" }
+
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+shell-escape = "0.1.5"
+console = { workspace = true }
+tempfile = { workspace = true }
+typed-path = { workspace = true }
+
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_yaml = { workspace = true }
+
+walkdir = { workspace = true }
+resolve-path = { workspace = true }
+
+git2 = { workspace = true }

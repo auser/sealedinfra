@@ -1,0 +1,39 @@
+[package]
+name = "sealed-cli"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+sealed-common = { workspace = true }
+sealed-ui = { workspace = true }
+sealed-operator = { workspace = true }
+sealed-services = { workspace = true }
+sealed-server = { workspace = true }
+
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+# TODO: should this be here?
+hex = { workspace = true }
+clap = { version = "4.5.14", features = ["derive", "unstable-doc"] }
+dotenv = { version = "0.15.0", features = ["clap"] }
+lazy_static = { workspace = true }
+log = { workspace = true }
+tokio = { workspace = true }
+
+serde = { workspace = true }
+serde_yaml = { workspace = true }
+serde_json = { workspace = true }
+colored = "2.1.0"
+console = "0.15.8"
+shell-escape = "0.1.5"
+git2 = { workspace = true }
+resolve-path = { workspace = true }
+rand = { workspace = true }
+futures = { workspace = true }
+
+# TODO: determine how to handle UI libraries
+indicatif = { workspace = true }
+crossbeam = { workspace = true }
+
+scopeguard = { workspace = true }
+atty = { workspace = true }

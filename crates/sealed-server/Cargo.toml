@@ -1,0 +1,30 @@
+[package]
+name = "sealed-server"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+sealed-common = { workspace = true }
+sealed-database = { workspace = true }
+
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+
+axum = { version = "0.7.5", features = ["macros", "ws"] }
+tower-http = { version = "0.6", features = ["fs", "cors"] }
+utoipa = { version = "4.2.3", features = [
+  "axum_extras",
+  "openapi_extensions",
+  "chrono",
+] }
+utoipa-swagger-ui = { version = "7.1.0", features = ["axum"] }
+
+serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+
+sha1 = "0.10.6"
+sha2 = { workspace = true }
+# TODO: move this somewhere else, maybe?
+hex = { workspace = true }

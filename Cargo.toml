@@ -19,25 +19,48 @@ license = false
 eula = false
 
 [dependencies]
+sealed-common = { workspace = true }
+sealed-cli = { workspace = true }
+sealed-operator = { workspace = true }
+sealed-services = { workspace = true }
+sealed-ui = { workspace = true }
+sealed-database = { workspace = true }
+
+tokio = { workspace = true }
+
+[workspace.dependencies]
+sealed-common = { path = "crates/sealed-common" }
+sealed-cli = { path = "crates/sealed-cli" }
+sealed-database = { path = "crates/sealed-database" }
+sealed-server = { path = "crates/sealed-server" }
+sealed-ui = { path = "crates/sealed-ui" }
+sealed-operator = { path = "crates/sealed-operator" }
+sealed-services = { path = "crates/sealed-services" }
+
 anyhow = "1.0.86"
 async-recursion = "1.1.1"
-atty = "0.2.14"
-axum = { version = "0.7.5", features = ["macros", "ws"] }
 bstr = "1.10.0"
+futures = "0.3.30"
 chrono = { version = "0.4.38", features = ["serde"] }
 clap = { version = "4.5.14", features = ["derive", "unstable-doc"] }
-colored = "2.1.0"
-config = "0.14.0"
-console = "0.15.8"
+
 crossbeam = "0.8.4"
-dirs = "5.0.1"
-dotenv = { version = "0.15.0", features = ["clap"] }
+
+# TODO: how do we handle UI dependencies?
+console = "0.15.8"
+colored = "2.1.0"
 env_logger = "0.11.5"
-futures = "0.3.30"
+indicatif = { version = "0.17.8", features = ["tokio"] }
+
+# TODO: should these be here?
 git-url-parse = { version = "0.4.5", features = ["tracing"] }
 git2 = { version = "0.19.0" }
 hex = { version = "0.4.3", features = ["serde"] }
-indicatif = { version = "0.17.8", features = ["tokio"] }
+scopeguard = "1.2.0"
+atty = "0.2.14"
+
+###
+
 
 k8s-openapi = { version = "0.23.0", features = ["v1_30"] }
 kube = { version = "0.95", features = ["runtime", "derive", "client"] }
@@ -50,30 +73,23 @@ num_cpus = "1.16.0"
 openssl = { version = "0.10.66", features = ["vendored"] }
 rand = "0.8.5"
 resolve-path = "0.1.0"
-schemars = { version = "0.8.21", features = ["uuid", "chrono"] }
-scopeguard = "1.2.0"
+# schemars = { version = "0.8.21", features = ["uuid", "chrono"] }
+
 serde = { version = "1.0.205", features = ["derive"] }
 serde_json = "1.0.128"
 serde_yaml = "0.9.34"
-sha1 = "0.10.6"
+
 sha2 = "0.10.8"
 shell-escape = "0.1.5"
-sqlx = { version = "0.8.0", features = [
-  "runtime-tokio-native-tls",
-  "postgres",
-  "chrono",
-  "uuid",
-  "runtime-async-std-native-tls",
-  "sqlite",
-] }
-tar = "0.4"
+typed-path = "0.9"
+
 tempfile = "3.12.0"
 thiserror = "1.0.63"
 tokio = { version = "1.39.2", features = ["full", "macros", "rt-multi-thread"] }
 tower-http = { version = "0.6", features = ["fs", "cors"] }
 tracing = { version = "0.1.40", features = ["log"] }
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
-typed-path = "0.9.2"
+
 utoipa = { version = "4.2.3", features = [
   "axum_extras",
   "openapi_extensions",
@@ -104,6 +120,18 @@ anyhow = "1.0.86"
 [profile.dist]
 inherits = "release"
 lto = "thin"
+
+[workspace]
+resolver = "2"
+members = [
+  "crates/sealed-cli",
+  "crates/sealed-common",
+  "crates/sealed-database",
+  "crates/sealed-operator",
+  "crates/sealed-server",
+  "crates/sealed-services",
+  "crates/sealed-ui",
+]
 
 [workspace.metadata.release]
 shared-version = true

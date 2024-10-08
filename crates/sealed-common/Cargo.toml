@@ -1,0 +1,42 @@
+[package]
+name = "sealed-common"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+sealed-ui = { workspace = true }
+
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+env_logger = { workspace = true }
+colored = { workspace = true }
+
+serde = { workspace = true }
+serde_yaml = { workspace = true }
+serde_json = { workspace = true }
+
+config = "0.14.0"
+sha1 = "0.10.6"
+sha2 = { workspace = true }
+typed-path = { workspace = true }
+
+kube = { workspace = true }
+k8s-openapi = { workspace = true }
+log = { workspace = true }
+hex = { workspace = true }
+
+# Should these be common?
+tar = "0.4"
+
+git-url-parse = { workspace = true }
+# typed-path = { workspace = true }
+walkdir = { workspace = true }
+
+dirs = "5.0.1"
+
+[dev-dependencies]
+tempfile = { workspace = true }

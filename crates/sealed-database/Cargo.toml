@@ -1,0 +1,30 @@
+[package]
+name = "sealed-database"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+sealed-common = { workspace = true }
+
+thiserror = { workspace = true }
+tokio = { workspace = true }
+
+sqlx = { version = "0.8.0", features = [
+  "runtime-tokio-native-tls",
+  "postgres",
+  "chrono",
+  "uuid",
+  "runtime-async-std-native-tls",
+  "sqlite",
+] }
+
+tracing = { workspace = true }
+log = { workspace = true }
+
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+
+utoipa = { workspace = true }
+chrono = { workspace = true }
+typed-path = { workspace = true }

@@ -1,5 +1,5 @@
-use log::error;
-use sealedinfra::exec;
+use sealed_cli::exec;
+use sealed_common::error;
 
 #[tokio::main]
 async fn main() {
